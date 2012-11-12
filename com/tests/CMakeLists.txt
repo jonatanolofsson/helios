@@ -1,1 +1,1 @@
-make_test(executor)
+make_test(ExecutorTests)

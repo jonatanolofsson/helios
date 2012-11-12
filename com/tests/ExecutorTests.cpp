@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include <os/com/Executor.hpp>
-#include <iostream>
 
 int triggered = 0;
 int result = 0;
@@ -13,7 +12,7 @@ void sampleActionFn0(int a, char b) {
 TEST(ExecutorTest, ExecuteWhenAllAvailable) {
     result = 0;
     // 1. Set up an action function
-    os::com::Executor<int,char> e(sampleActionFn0, true);
+    os::com::Executor<int,char> e(sampleActionFn0);
     int inv = e.getInvokations();
     os::com::yield(1);
     EXPECT_EQ(triggered, 0);
@@ -21,7 +20,6 @@ TEST(ExecutorTest, ExecuteWhenAllAvailable) {
     e.wait(inv+1);
     EXPECT_EQ(triggered, 1);
     EXPECT_EQ((char)result, 'b');
-    e.join();
 }
 
 
@@ -29,25 +27,13 @@ void sampleActionFn1() {
     ++triggered;
 }
 
-TEST(ExecutorTest, ExecuteOnceWithNoArgs) {
-    result = 0;
-    triggered = 0;
-    // 1. Set up an action function
-    os::com::Executor<> e(sampleActionFn1, true);
-    int inv = e.getInvokations();
-    e.wait(inv+1);
-    EXPECT_EQ(triggered, 1);
-    e.join();
-}
-
 TEST(ExecutorTest, ExecuteWithNoArgs) {
     result = 0;
     triggered = 0;
     // 1. Set up an action function
-    os::com::Executor<> e(sampleActionFn1, false);
+    os::com::Executor<> e(sampleActionFn1);
     int inv = e.getInvokations();
     EXPECT_EQ(triggered, false);
     e.wait(inv+10);
-    EXPECT_GT(triggered, 1);
-    e.join();
+    EXPECT_GT(triggered, 10);
 }

@@ -7,4 +7,7 @@ namespace os {
         clock_t last_time;
         static const int TICKS_PER_SECOND = CLOCKS_PER_SEC;
     };
+    struct SystemTime {
+        int ticks;
+    };
 }

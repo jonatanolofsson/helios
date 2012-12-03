@@ -12,11 +12,11 @@ void sampleActionFn0(int a, char b) {
 TEST(ExecutorTest, ExecuteWhenAllAvailable) {
     result = 0;
     // 1. Set up an action function
-    os::com::Executor<int,char> e(sampleActionFn0);
+    os::Executor<int,char> e(sampleActionFn0);
     int inv = e.getInvokations();
-    os::com::yield(1);
+    os::yield(1);
     EXPECT_EQ(triggered, 0);
-    os::com::yield('a');
+    os::yield('a');
     e.wait(inv+1);
     EXPECT_EQ(triggered, 1);
     EXPECT_EQ((char)result, 'b');
@@ -31,7 +31,7 @@ TEST(ExecutorTest, ExecuteWithNoArgs) {
     result = 0;
     triggered = 0;
     // 1. Set up an action function
-    os::com::Executor<> e(sampleActionFn1);
+    os::Executor<> e(sampleActionFn1);
     int inv = e.getInvokations();
     EXPECT_EQ(triggered, false);
     e.wait(inv+10);

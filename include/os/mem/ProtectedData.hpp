@@ -11,13 +11,17 @@ namespace os {
             std::mutex guard;
             std::unique_lock<std::mutex> l;
 
-        public:
-            ProtectedData() : l(guard, std::defer_lock) {}
             void lock() {
                 l.lock();
             }
             void unlock() {
                 l.unlock();
+            }
+
+        public:
+            ProtectedData() : l(guard, std::defer_lock) {}
+            std::unique_lock<std::mutex> retrieve_lock() const {
+                return std::unique_lock<std::mutex>(const_cast<std::mutex&>(guard));
             }
     };
     typedef ProtectedData<Nothing> ProtectedClass;

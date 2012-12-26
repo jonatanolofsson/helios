@@ -5,6 +5,7 @@
 #include <os/types.hpp>
 #include <os/utils/pty.hpp>
 #include <os/com/SerialCommunication.hpp>
+#include <os/com/TestMessages.hpp>
 #include <os/bytemagic.hpp>
 
 #include <unistd.h>
@@ -25,17 +26,6 @@ struct Stats_t {
     }
 } stats;
 
-struct MyTestMessage0 {
-    S32 a;
-};
-struct MyTestMessage1 {
-    U32 a;
-    U8 b;
-};
-struct MyTestMessage2 {
-    S32 a;
-};
-
 MyTestMessage0 local2mcu0 = {'l'};
 MyTestMessage0 mcu2local0 = {'m'};
 MyTestMessage1 local2mcu1 = {'l', 'b'};
@@ -47,27 +37,9 @@ std::mutex localMessageGuard;
 std::mutex mcuMessageGuard;
 std::condition_variable localCond;
 std::condition_variable mcuCond;
-class TestMessages;
 typedef SerialCommunication<TestMessages, 100, 10, false> Serial;
 Serial* glocal;
 Serial* gmcu;
-
-
-template<int ID> struct TestMessage;
-struct TestMessages {
-    static const int numberOfMessages = 3;
-
-    enum Id {
-        myTestMessage0 = 0,
-        myTestMessage1 = 1,
-        myTestMessage2 = 2
-    };
-    template<Id ID>
-    struct Message { typedef typename TestMessage<ID>::Type Type; };
-};
-template<> struct TestMessage<TestMessages::Id::myTestMessage0> { typedef MyTestMessage0 Type; };
-template<> struct TestMessage<TestMessages::Id::myTestMessage1> { typedef MyTestMessage1 Type; };
-template<> struct TestMessage<TestMessages::Id::myTestMessage2> { typedef MyTestMessage2 Type; };
 
 void localMessageHandler0(const U8* msg, const std::size_t len) {
     //~ std::cout << "Local 0" << std::endl;
@@ -120,7 +92,7 @@ void mcuMessageHandler1(const U8* msg, const std::size_t len) {
         EXPECT_EQ('b', message.b);
         ++stats.mcu.message1;
         mcuCond.notify_all();
-        gmcu->send<TestMessages::Id::myTestMessage1>(mcu2local1);
+        gmcu->send<>(mcu2local1);
     }
 }
 
@@ -129,13 +101,13 @@ void localMessageHandler2(const U8*, const std::size_t) {
     if(++stats.local.message2 == LOAD_N) {
         localCond.notify_all();
     } else {
-        glocal->send<TestMessages::Id::myTestMessage2>(local2mcu2);
+        glocal->send<>(local2mcu2);
     }
 }
 
 void mcuMessageHandler2(const U8*, const std::size_t) {
     std::unique_lock<std::mutex> l(mcuMessageGuard);
-    gmcu->send<TestMessages::Id::myTestMessage2>(mcu2local2);
+    gmcu->send<>(mcu2local2);
     if(++stats.mcu.message2 == LOAD_N) {
         mcuCond.notify_all();
     }
@@ -177,14 +149,14 @@ void expectMessageCount(const int l0 = 0, const int m0 = 0, const int l1 = 0, co
 
 TEST_F(SerialCommunicationTests, SendAndReceive) {
     std::unique_lock<std::mutex> l(mcuMessageGuard);
-    local.send<TestMessages::Id::myTestMessage0>(local2mcu0);
+    local.send<>(local2mcu0);
     while(!stats.mcu.message0) mcuCond.wait(l);
-    expectMessageCount(0, 1, 0, 0);
+    expectMessageCount(0, 1);
 }
 
 TEST_F(SerialCommunicationTests, ThereAndBackAgain) {
     std::unique_lock<std::mutex> l(localMessageGuard);
-    local.send<TestMessages::Id::myTestMessage1>(local2mcu1);
+    local.send<>(local2mcu1);
     while(stats.local.message1 == 0) localCond.wait(l);
     expectMessageCount(0, 0, 1, 1);
 }
@@ -192,7 +164,7 @@ TEST_F(SerialCommunicationTests, ThereAndBackAgain) {
 TEST_F(SerialCommunicationTests, QueueTest) {
     std::unique_lock<std::mutex> l(mcuMessageGuard);
     for(int i = 0; i < 15; ++i) {
-        local.send<TestMessages::Id::myTestMessage0>(local2mcu0);
+        local.send<>(local2mcu0);
     }
     while(stats.mcu.message0 < 15) mcuCond.wait(l);
     expectMessageCount(0, 15);
@@ -200,7 +172,7 @@ TEST_F(SerialCommunicationTests, QueueTest) {
 
 TEST_F(SerialCommunicationTests, LoadTest) {
     std::unique_lock<std::mutex> l(localMessageGuard);
-    local.send<TestMessages::Id::myTestMessage2>(local2mcu2);
+    local.send<>(local2mcu2);
     while(stats.local.message2 < LOAD_N) localCond.wait(l);
     expectMessageCount(0, 0, 0, 0, LOAD_N, LOAD_N);
 }

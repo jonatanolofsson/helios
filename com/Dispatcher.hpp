@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <os/com/com.hpp>
 #include <os/exceptions.hpp>
+#include <iostream>
 
 namespace os {
     template<typename T> class Signal;
@@ -67,22 +68,23 @@ namespace os {
             }
     };
 
-    template<typename... TARG>
-    class Executor : public Via<TARG>... {
+    template<typename T, typename... TARG>
+    class Dispatcher : public Via<TARG>... {
         public:
-            typedef void(*ActionFunction)(TARG...);
-            Executor(const ActionFunction& fn)
+            typedef void(T::*ActionFunction)(TARG...);
+            Dispatcher(const ActionFunction& fn, T* const that_)
                 : Via<TARG>()...
+                , that(that_)
                 , action(fn)
                 , invokations(0)
                 , dying(false)
-            { t = std::thread(&Executor<TARG...>::run, this); }
-            ~Executor() {
+            { t = std::thread(&Dispatcher<T, TARG...>::run, this); }
+            ~Dispatcher() {
                 join();
             }
-            void wait(const int invokation) {
+            void wait(const int last_invokation) {
                 std::unique_lock<std::mutex> l(invokationGuard);
-                while(invokation > invokations && !dying) cond.wait(l);
+                while(last_invokation > invokations && !dying) cond.wait(l);
             }
             int getInvokations() {
                 std::unique_lock<std::mutex> l(invokationGuard);
@@ -99,25 +101,26 @@ namespace os {
             }
         private:
             template<typename... TYPES>
-            struct HaltVia {static void halt(Executor<TARG...>*){}};
+            struct HaltVia {static void halt(Dispatcher<T, TARG...>*){}};
             template<typename T0, typename... TYPES>
             struct HaltVia<T0, TYPES...> {
-                static void halt(Executor<TARG...>* that) {
-                    that->Via<T0>::halt();
-                    HaltVia<TYPES...>::halt(that);
+                static void halt(Dispatcher<T, TARG...>* obj) {
+                    obj->Via<T0>::halt();
+                    HaltVia<TYPES...>::halt(obj);
                 }
             };
 
             std::mutex invokationGuard;
             std::condition_variable cond;
-            ActionFunction action;
+            T* const that;
+            const ActionFunction action;
             int invokations;
             bool dying;
             std::thread t;
             void run() {
                 try {
                     while(!dying) {
-                        action(Via<TARG>::value()...);
+                        (that->*action)(Via<TARG>::value()...);
                         std::unique_lock<std::mutex> l(invokationGuard);
                         ++invokations;
                         cond.notify_all();

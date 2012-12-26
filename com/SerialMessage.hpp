@@ -7,6 +7,8 @@ namespace os {
 
     const std::size_t   SERIAL_MESSAGE_SEPARATOR_LENGTH = 1;
     const U8            SERIAL_MESSAGE_SEPARATOR        = 0xAA;
+    const U8            SERIAL_MESSAGE_ACK_OK           = 0xFE;
+    const U8            SERIAL_MESSAGE_ACK_INVALID      = 0xFD;
 
     struct MessageHeader {
         U16        id;

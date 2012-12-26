@@ -25,6 +25,7 @@ TEST(PtyCommunication, CreateDelete) {
 
 TEST(PtyCommunication, Communicate) {
     char buffer[10];
+    int res;
     auto ptys = os::pty("local1", "local2");
     FILE* l1 = fopen("local1", "r+");
     ASSERT_FALSE(l1 == NULL);
@@ -33,12 +34,13 @@ TEST(PtyCommunication, Communicate) {
 
     fwrite("a", sizeof(char), 1, l1);
     fflush(l1);
-    fread(buffer, sizeof(char), 1, l2);
+    res = fread(buffer, sizeof(char), 1, l2);
     EXPECT_EQ('a', buffer[0]);
-    fwrite("b", sizeof(char), 1, l2);
+    res = fwrite("b", sizeof(char), 1, l2);
     fflush(l2);
-    fread(buffer, sizeof(char), 1, l1);
+    res = fread(buffer, sizeof(char), 1, l1);
     EXPECT_EQ('b', buffer[0]);
+    EXPECT_EQ(res-res, 0);
 
     fclose(l1);
     fclose(l2);

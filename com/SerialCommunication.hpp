@@ -8,9 +8,9 @@
 
 namespace os {
     template<typename M, int MAX_MESSAGE_SIZE, int MAX_QUEUE_LENGTH, int BAUD_RATE = B115200>
-    class SerialCommunication : public AsioCommunication<SerialCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH, BAUD_RATE>, M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> {
+    class SerialCommunication : public AsioCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> {
         private:
-            typedef AsioCommunication<SerialCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH, BAUD_RATE>, M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> Parent;
+            typedef AsioCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> Parent;
             std::string portName;
             struct termios config;
 
@@ -19,8 +19,11 @@ namespace os {
             : Parent(portName_)
             , portName(portName_)
             {
-                Parent::socket = ::open(portName.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK /*| O_NDELAY*/);//
-                //~ std::cout << "Opened: " << Parent::socket << "; errno = " << errno << std::endl;
+                int tries = 0;
+                while(Parent::socket == 0 && ++tries <= 10) {
+                    Parent::socket = ::open(portName.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK /*| O_NDELAY*/);//
+                }
+                //~ std::cout << "Opened " << portName << ": " << Parent::socket << "; errno = " << errno << std::endl;
 
                 if(BAUD_RATE) {
                     memset(&config, 0, sizeof(config));
@@ -73,10 +76,6 @@ namespace os {
                 }
 
                 Parent::start();
-            }
-
-            void errorHandler2(const boost::system::error_code&) {
-                //~ socket.open(portName);
             }
     };
 }

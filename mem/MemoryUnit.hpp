@@ -1,15 +1,13 @@
 #ifndef OS_MEM_MEMORYUNIT_HPP_
 #define OS_MEM_MEMORYUNIT_HPP_
 
-#include <cmath>
-#include <cstddef>
 #include <os/bytemagic.hpp>
 
 namespace os {
     template<std::size_t SIZE, std::size_t ALIGN = 1>
     class MemoryUnit {
         private:
-            std::size_t length_;
+            U64 length_;
             U8 storage[SIZE + ALIGN - 1];
             U8* data_nc() const {
                 return os::addAlignment(storage, ALIGN);
@@ -25,11 +23,17 @@ namespace os {
             }
             template<unsigned OFFSET = 0, typename T>
             void cpy(const T& d, const std::size_t len = sizeof(T)) {
-                if(OFFSET + len <= SIZE) {
+                if((OFFSET + len) <= SIZE) {
                     memcpy(data_nc() + OFFSET, &d, len);
-                    length_ = std::max(length_, OFFSET + len);
+                    length_ = (length_ > (OFFSET + len) ? length_ : (OFFSET + len));
+                    //~ Serial3.print("mem.cpy offset ");
+                    //~ Serial3.println((char)('0' + OFFSET-8));
+                    //~ Serial3.print("mem.cpy length ");
+                    //~ Serial3.println((char)('0' + len-8));
+                    //~ Serial3.print("mem.cpy total ");
+                    //~ Serial3.println((char)('0' + length_-8));
                 } else {
-                    std::cerr << "Tried to overfill membuffer" << std::endl;
+                    //~ std::cerr << "Tried to overfill membuffer" << std::endl;
                 }
             }
     };

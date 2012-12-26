@@ -1,6 +1,8 @@
 #ifndef OS_BYTEMAGIC_HPP_
 #define OS_BYTEMAGIC_HPP_
 
+#include <string.h>
+
 namespace os {
     template<typename R>
     R fromBytes(const void* data) {
@@ -18,7 +20,8 @@ namespace os {
 
     template<typename T>
     T* addAlignment(const T* start, const size_t alignment) {
-        return (T*)start + alignmentToAdd(start, alignment);
+        return (T*)((U8*)start + alignmentToAdd(start, alignment));
     }
 }
+
 #endif

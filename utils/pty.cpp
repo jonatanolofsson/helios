@@ -16,9 +16,10 @@ namespace os {
     , port1(_port1)
     , port2(_port2)
     {
-        pid = fork();
         std::string p1 = os::sprintf("pty,raw,echo=0,link=%s", port1.c_str());
         std::string p2 = os::sprintf("pty,raw,echo=0,link=%s", port2.c_str());
+
+        pid = fork();
         if(pid == 0) {
             execl("/usr/bin/socat", "/usr/bin/socat"/*, "-v" */, p1.c_str(), p2.c_str(), NULL);
             error = errno;
@@ -31,6 +32,7 @@ namespace os {
             for(; tries < MAX_READ_TRIES; ++tries) {
                 f = fopen(port1.c_str(), "r");
                 if(f != NULL) {
+                    //~ std::cout << "Opened " << port1 << std::endl;
                     fclose(f);
                     break;
                 }
@@ -45,6 +47,7 @@ namespace os {
             for(tries = 0; tries < MAX_READ_TRIES; ++tries) {
                 f = fopen(port2.c_str(), "r");
                 if(f != NULL) {
+                    //~ std::cout << "Opened " << port2 << std::endl;
                     fclose(f);
                     break;
                 }
@@ -105,9 +108,20 @@ namespace os {
     void pty::close() {
         kill(pid, SIGTERM);
         FILE* f = NULL;
-        int tries = 0;
-        for(; tries < MAX_READ_TRIES; ++tries) {
+        int tries;
+        //~ std::cout << "Closing " << port1 << std::endl;
+        for(tries = 0; tries < MAX_READ_TRIES; ++tries) {
             f = fopen(port1.c_str(), "r");
+            if(f != NULL) {
+                fclose(f);
+            } else {
+                break;
+            }
+            usleep(SLEEP_TIME_US);
+        }
+        //~ std::cout << "Closing " << port2 << std::endl;
+        for(tries = 0; tries < MAX_READ_TRIES; ++tries) {
+            f = fopen(port2.c_str(), "r");
             if(f != NULL) {
                 fclose(f);
             } else {

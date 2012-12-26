@@ -1,6 +1,9 @@
 #ifndef OS_MEM_CIRCULARBUFFER_HPP_
 #define OS_MEM_CIRCULARBUFFER_HPP_
 
+#include <mutex>
+#include <condition_variable>
+
 namespace os {
     template<typename T, int N>
     class CircularBuffer {

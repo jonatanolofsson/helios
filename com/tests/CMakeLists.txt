@@ -1,7 +1,11 @@
-make_test(ExecutorTests)
-#~ make_test(PostOfficeTests)
+make_test(DispatcherTests)
 make_test(LocalSerialCommunicationTests)
 target_link_libraries(LocalSerialCommunicationTests
+    utils
+    ${Boost_LIBRARIES}
+)
+make_test(LocalNetworkCommunicationTests)
+target_link_libraries(LocalNetworkCommunicationTests
     utils
     ${Boost_LIBRARIES}
 )

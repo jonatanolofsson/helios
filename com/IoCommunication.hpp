@@ -1,23 +1,29 @@
-#ifndef OS_COM_ASIOCOMMUNICATION_HPP_
-#define OS_COM_ASIOCOMMUNICATION_HPP_
+#ifndef OS_COM_IOCOMMUNICATION_HPP_
+#define OS_COM_IOCOMMUNICATION_HPP_
 
-#include <stdint.h>
-#include <os/mem/CircularBuffer.hpp>
-#include <os/mem/MemoryUnit.hpp>
 #include <os/crc.hpp>
 #include <os/bytemagic.hpp>
+#include <os/type_traits.hpp>
+#include <os/com/PostOffice.hpp>
+#include <os/mem/MemoryUnit.hpp>
 
-#include <iostream>
-#include <exception>
-#include <thread>
-#include <boost/thread.hpp>
-
-#include <termios.h>
+#ifdef MAPLE_MINI
+#include <wirish/wirish.h>
+#include <syrup/comm/ByteInterface.hpp>
+using namespace syrup;
+#else
 #include <unistd.h>
+#include <string>
+#include <errno.h>
+#endif
 
 namespace os {
-    template<typename T, typename M, int MAX_MESSAGE_SIZE, int MAX_QUEUE_LENGTH>
-    class AsioCommunication : public PostOffice<M> {
+    template<typename M, int MAX_MESSAGE_SIZE>
+    class IoCommunication : public PostOffice<M> {
+        private:
+            typedef IoCommunication<M, MAX_MESSAGE_SIZE> Self;
+            typedef PostOffice<M> Parent;
+
         protected:
             struct Message {
                 U8*             body;
@@ -26,44 +32,36 @@ namespace os {
                 MessageHeader   header;
             };
 
-            AsioCommunication(const std::string name_)
-            : PostOffice<M>()
+            explicit IoCommunication(
+#ifndef MAPLE_MINI
+            const std::string name_
+#endif
+            )
+            : Parent()
             , socket(0)
             , dying(false)
-            , transmitting(false)
+#ifndef MAPLE_MINI
             , name(name_)
-            , queue()
-            {
-                //~ std::cout << getName() << ": " << "Construct " << std::endl;
-            }
+#endif
+            {}
 
             void start() {
-                //~ std::cout << getName() << ": " << "Start: " << socket << std::endl;
-                assert(socket > 0);
+                dying = false;
+                //~ assert(socket > 0);
                 startReceive();
-                readerThread = std::thread(&Self::readerLoop, this);
-                //~ std::cout << getName() << ": " << "Start 2: " << socket << std::endl;
-                writerThread = std::thread(&Self::transmitLoop, this);
             }
 
-            ~AsioCommunication() {
+            ~IoCommunication() {
                 close();
             }
 
             typedef MemoryUnit<MAX_MESSAGE_SIZE, alignof(MessageHeader)> MemUnit;
             int socket;
             bool dying;
-            bool transmitting;
+#ifndef MAPLE_MINI
             std::string name;
+#endif
             static const int SLEEP_TIME_US = 100;
-
-        private:
-            typedef AsioCommunication<T, M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> Self;
-            U8 readMsg[MAX_MESSAGE_SIZE];
-            CircularBuffer<MemUnit, MAX_QUEUE_LENGTH> queue;
-            Message msginfo;
-            std::thread readerThread;
-            std::thread writerThread;
 
             template<typename TT>
             void signPackage(MessageHeader& header, const TT& contents) {
@@ -77,14 +75,22 @@ namespace os {
                 );
             }
 
+        private:
+            U8 readMsg[MAX_MESSAGE_SIZE];
+            Message msginfo;
+
             void startReceive() {
+                #ifndef MAPLE_MINI
                 //~ std::cout << getName() << ": " << "Start receive" << std::endl;
+                #endif
                 reader.reset();
                 reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateFirstSeparator);
             }
 
             void validateFirstSeparator() {
+                #ifndef MAPLE_MINI
                 //~ std::cout << getName() << ": " << "Got separator, #" << std::endl;
+                #endif
                 if((readMsg[0] == SERIAL_MESSAGE_SEPARATOR)) {
                     //~ std::cout << getName() << ": " << "Valid separator" << std::endl;
                     reader.reset();
@@ -96,13 +102,20 @@ namespace os {
             }
 
             void validateSecondarySeparators() {
+                #ifndef MAPLE_MINI
+                //~ std::cout << getName() << ": " << "Got next" << std::endl;
+                #endif
                 if(readMsg[0] == SERIAL_MESSAGE_SEPARATOR) {
+                    #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid separator" << std::endl;
+                    #endif
                     // Another separator was received.
                     reader.reset();
                     reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateSecondarySeparators);
                 } else {
-                    //~ std::cout << getName() << ": " << "Partial header" << std::endl;
+                    #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": " << "Partial header. Read another " << (SERIAL_MESSAGE_HEADER_LENGTH-1) << " bytes." << std::endl;
+                    #endif
                     // No more separators received, interpret as header and continue to read as such
                     reader.read(SERIAL_MESSAGE_HEADER_LENGTH-1, &Self::validateReceivedHeader);
                 }
@@ -119,17 +132,33 @@ namespace os {
                     sizeof(MessageHeader::id) + sizeof(MessageHeader::length) + sizeof(MessageHeader::bodyCRC)
                 );
                 if(msginfo.headerCRC != msginfo.header.headerCRC) {
-                    std::cerr << getName() << ": Invalid header crc: " << msginfo.headerCRC << " vs " << msginfo.header.headerCRC << std::endl;
-                    std::cerr << msginfo.header.id << " " << msginfo.header.length << std::endl;
+                    #ifndef MAPLE_MINI
+                    //~ std::cerr << getName() << ": Invalid header crc: " << msginfo.headerCRC << " vs " << msginfo.header.headerCRC << std::endl;
+                    #endif
+                    //~ std::cerr << msginfo.header.id << " " << msginfo.header.length << std::endl;
+                    return false;
+                }
+                if(msginfo.header.id >= M::numberOfMessages) {
+                #ifndef MAPLE_MINI
+                    //~ std::cerr << getName() << ": Invalid id: " << msginfo.header.id << std::endl;
+                #endif
                     return false;
                 }
 
                 std::size_t alignment = PostOffice<M>::getAlignment(msginfo.header.id);
+                if(alignment == 0) {
+                #ifndef MAPLE_MINI
+                    //~ std::cerr << getName() << ": Invalid packager: " << msginfo.header.id << std::endl;
+                #endif
+                    return false;
+                }
                 msginfo.body = os::addAlignment(readMsg + reader.offset, alignment);
                 reader.offset += os::alignmentToAdd(readMsg + reader.offset, alignment);
 
                 if(sizeof(MessageHeader) + msginfo.header.length + alignment - 1 > MAX_MESSAGE_SIZE) {
-                    std::cerr << getName() << ": Message too big: " << msginfo.header.length << std::endl;
+                #ifndef MAPLE_MINI
+                    //~ std::cerr << getName() << ": Message too big: " << msginfo.header.length << std::endl;
+                #endif
                     // Message to big.
                     /// \todo Warn
                     return false;
@@ -139,10 +168,15 @@ namespace os {
 
             void validateReceivedHeader() {
                 if(validateHeader()) {
+                    #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid header. Receive: " << msginfo.header.length << std::endl;
+                    #endif
                     reader.read(msginfo.header.length, &Self::validateReceivedBody);
                 } else {
-                    std::cerr << getName() << ": " << "Invalid header" << std::endl;
+                    #ifndef MAPLE_MINI
+                    //~ std::cerr << getName() << ": " << "Invalid header" << std::endl;
+                    #endif
+                    startReceive();
                 }
             }
 
@@ -159,7 +193,7 @@ namespace os {
                     //~ std::cout << getName() << ": " << "Valid body" << std::endl;
                     PostOffice<M>::dispatch(msginfo.header.id, msginfo.body, msginfo.header.length);
                 } else {
-                    std::cerr << getName() << ": " << "Invalid body" << std::endl;
+                    //~ std::cerr << getName() << ": " << "Invalid body" << std::endl;
                 }
 
                 /* Restart */
@@ -182,91 +216,86 @@ namespace os {
                 }
             } reader;
 
+        public:
             void readerLoop() {
                 //~ std::cout << getName() << ": " << "Reading from " << socket << std::endl;
                 while(!dying) {
-                    int serial_recv_byte_count = 0;
+                    int receivedBytes = 0;
                     size_t remaining = reader.length;
                     while(remaining > 0 && !dying) {
-                        if (( serial_recv_byte_count  = ::read(socket, &readMsg[reader.offset], remaining)) < 0 ) {
-                            //~ std::cerr << "read() failed: " << errno << std::endl;
-                            //~ usleep(SLEEP_TIME_US);
-                            //~ startReceive();
-                            remaining = reader.length;
-                        } else {
-                            //~ if(serial_recv_byte_count>0) std::cout << "Read " << serial_recv_byte_count << std::endl;
-                            remaining -= serial_recv_byte_count;
-                            reader.offset += serial_recv_byte_count;
+                        receivedBytes  = ::read(socket, &readMsg[reader.offset], remaining);
+                        if(receivedBytes  > 0) {
+                            remaining -= receivedBytes;
+                            reader.offset += receivedBytes;
+                #ifndef MAPLE_MINI
+                            //~ if(receivedBytes>0) std::cout << "Read " << receivedBytes << ". Remaining: " << remaining << std::endl;
+                #endif
                         }
                     }
                     if(!dying) {
                         ((this)->*(reader.cb))();
                     }
                 }
+                //~ std::cout << getName() << ": Reader died " << socket << std::endl;
             }
 
-            void transmitLoop() {
-                //~ std::cout << "Transmitting on " << socket << std::endl;
-                MemUnit* mem;
-                while(!dying) {
-                    mem = queue.next();
-                    if(mem) {
-                        if(::write(socket, &SERIAL_MESSAGE_SEPARATOR, SERIAL_MESSAGE_SEPARATOR_LENGTH) != (int)SERIAL_MESSAGE_SEPARATOR_LENGTH) {
-                            std::cerr << "write(" << socket << ") failed: " << errno << std::endl;
-                        }
-                        else if(::write(socket, mem->data(), mem->length()) != (int)mem->length()) {
-                            std::cerr << "write(" << socket << ") failed: " << errno << std::endl;
-                        }
-                        else {
-                            queue.pop();
-                        }
-                    }
+            bool transmit(const MemUnit& mem) {
+                bool returnValue = true;
+#ifdef MAPLE_MINI
+                //~ Serial3.write('0' + mem.length()-16);
+                //~ return true;
+#endif
+
+                //~ Serial3.write("Transmit message");
+                //~ return true;
+                //~ delay(500);
+                //~ Serial3.write('0' + mem.length());
+                //~ delay(500);
+                //~ Serial3.write("\r\n");
+                //~ delay(500);
+                //~ static bool a = true;
+                //~ digitalWrite(BOARD_LED_PIN, a);
+                //~ a =! a;
+                //~ Serial3.print("Transmit ");
+                //~ Serial3.print((char)('0' + mem.length()-16));
+                //~ Serial3.println(" bytes");
+
+                if((::write(socket, &SERIAL_MESSAGE_SEPARATOR, SERIAL_MESSAGE_SEPARATOR_LENGTH) != (int)SERIAL_MESSAGE_SEPARATOR_LENGTH)
+                || (::write(socket, mem.data(), mem.length()) != (int)mem.length()))
+                {
+                    //~ std::cerr << "write(" << socket << ") failed: " << errno << std::endl;
+                    returnValue = false;
                 }
+                return returnValue;
             }
 
-        public:
-            template<typename M::Id ID>
-            void send(const typename M::template Message<ID>::Type& contents) {
+            template<typename T>
+            void send(const T& contents) {
+                //~ static_assert(os::SameType<typename M::template Message<T::ID>::Type, T>::value, "Invalid message type.");
                 if(dying) {
                     return;
                 }
 
-                MemUnit* mem = queue.reserve();
-                MessageHeader header = { ID, sizeof(contents), 0, 0 };
+                MemUnit mem;
+
+                MessageHeader header = { T::ID, sizeof(contents), 0, 0 };
                 signPackage(header, contents);
-                mem->cpy(header);
-                mem->template cpy<sizeof(header)>(contents);
-                queue.push();
+                mem.cpy(header);
+                mem.template cpy<sizeof(header)>(contents);
+                transmit(mem);
             }
-
-            template<typename M::Id ID>
-            void sendRaw(const U8* contents, const std::size_t len) {
-                if(dying) {
-                    return;
-                }
-
-                MemUnit* mem = queue.reserve();
-                MessageHeader header = { ID, len };
-                signPackage(header, contents);
-                mem->cpy(&header);
-                mem->cpy<sizeof(header)>(&contents, len);
-                queue.push();
-            }
-
+#ifndef MAPLE_MINI
             std::string getName() const {
                 return name;
             }
+#endif
 
-            void close() {
-                //~ std::cout << "Dying" << std::endl;
+            virtual void close() {
                 dying = true;
-                queue.kill();
-                writerThread.join();
-                //~ std::cout << "Writer died" << std::endl;
-                ::close(socket);
+                if(socket) {
+                    ::close(socket);
+                }
                 socket = 0;
-                readerThread.join();
-                //~ std::cout << "Reader died" << std::endl;
             }
     };
 }

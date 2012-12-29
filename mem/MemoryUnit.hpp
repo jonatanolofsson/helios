@@ -26,12 +26,6 @@ namespace os {
                 if((OFFSET + len) <= SIZE) {
                     memcpy(data_nc() + OFFSET, &d, len);
                     length_ = (length_ > (OFFSET + len) ? length_ : (OFFSET + len));
-                    //~ Serial3.print("mem.cpy offset ");
-                    //~ Serial3.println((char)('0' + OFFSET-8));
-                    //~ Serial3.print("mem.cpy length ");
-                    //~ Serial3.println((char)('0' + len-8));
-                    //~ Serial3.print("mem.cpy total ");
-                    //~ Serial3.println((char)('0' + length_-8));
                 } else {
                     //~ std::cerr << "Tried to overfill membuffer" << std::endl;
                 }

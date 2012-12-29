@@ -49,7 +49,7 @@ namespace os {
                 writerThread = std::thread(&Self::transmitLoop, this);
             }
 
-            typedef MemoryUnit<MAX_MESSAGE_SIZE, alignof(MessageHeader)> MemUnit;
+            typedef typename Parent::MemUnit MemUnit;
             bool transmitting;
             static const int SLEEP_TIME_US = 100;
 
@@ -82,8 +82,9 @@ namespace os {
                 MemUnit* mem = queue.reserve();
                 MessageHeader header = { T::ID, sizeof(contents), 0, 0 };
                 Parent::signPackage(header, contents);
-                mem->cpy(header);
-                mem->template cpy<sizeof(header)>(contents);
+                mem->cpy(SERIAL_MESSAGE_SEPARATOR);
+                mem->template cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
+                mem->template cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents);
                 queue.push();
             }
 
@@ -96,8 +97,9 @@ namespace os {
                 MemUnit* mem = queue.reserve();
                 MessageHeader header = { ID, len };
                 Parent::signPackage(header, contents);
-                mem->cpy(&header);
-                mem->cpy<sizeof(header)>(&contents, len);
+                mem->cpy(SERIAL_MESSAGE_SEPARATOR);
+                mem->cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
+                mem->cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents, len);
                 queue.push();
             }
 

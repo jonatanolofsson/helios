@@ -245,29 +245,16 @@ namespace os {
                 //~ Serial3.write('0' + mem.length()-16);
                 //~ return true;
 #endif
-
-                //~ Serial3.write("Transmit message");
-                //~ return true;
-                //~ delay(500);
-                //~ Serial3.write('0' + mem.length());
-                //~ delay(500);
-                //~ Serial3.write("\r\n");
-                //~ delay(500);
-                //~ static bool a = true;
-                //~ digitalWrite(BOARD_LED_PIN, a);
-                //~ a =! a;
-                //~ Serial3.print("Transmit ");
-                //~ Serial3.print((char)('0' + mem.length()-16));
-                //~ Serial3.println(" bytes");
-
-                if((::write(socket, &SERIAL_MESSAGE_SEPARATOR, SERIAL_MESSAGE_SEPARATOR_LENGTH) != (int)SERIAL_MESSAGE_SEPARATOR_LENGTH)
-                || (::write(socket, mem.data(), mem.length()) != (int)mem.length()))
+                if(::write(socket, mem.data(), mem.length()) != (int)mem.length())
                 {
                     //~ std::cerr << "write(" << socket << ") failed: " << errno << std::endl;
                     returnValue = false;
                 }
                 return returnValue;
             }
+
+
+            MemUnit mem[2];
 
             template<typename T>
             void send(const T& contents) {
@@ -276,13 +263,15 @@ namespace os {
                     return;
                 }
 
-                MemUnit mem;
-
+                static bool n = 0;
                 MessageHeader header = { T::ID, sizeof(contents), 0, 0 };
                 signPackage(header, contents);
-                mem.cpy(header);
-                mem.template cpy<sizeof(header)>(contents);
-                transmit(mem);
+
+                mem[n].cpy(SERIAL_MESSAGE_SEPARATOR);
+                mem[n].template cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
+                mem[n].template cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents);
+                transmit(mem[n]);
+                n = !n;
             }
 #ifndef MAPLE_MINI
             std::string getName() const {

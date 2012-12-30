@@ -202,8 +202,10 @@ namespace os {
 
             struct reader_ {
                 typedef void(Self::*Callback)();
-                size_t length;
-                size_t offset;
+                int length;
+                int offset;
+                int remaining;
+                int receivedBytes;
                 Callback cb;
 
                 void reset() {
@@ -213,28 +215,32 @@ namespace os {
                 void read(unsigned int length_, Callback cb_) {
                     length = length_;
                     cb = cb_;
+                    remaining = length;
                 }
             } reader;
 
         public:
+            void readBytes() {
+                if(0 == reader.remaining) return;
+                reader.receivedBytes  = ::read(socket, &readMsg[reader.offset], reader.remaining);
+                if(reader.receivedBytes  > 0) {
+                    reader.remaining -= reader.receivedBytes;
+                    reader.offset += reader.receivedBytes;
+                    #ifndef MAPLE_MINI
+                    //~ if(receivedBytes>0) std::cout << "Read " << receivedBytes << ". Remaining: " << remaining << std::endl;
+                    #endif
+                    if(0 == reader.remaining) {
+                        if(!dying) {
+                            ((this)->*(reader.cb))();
+                        }
+                    }
+                }
+            }
+
             void readerLoop() {
                 //~ std::cout << getName() << ": " << "Reading from " << socket << std::endl;
                 while(!dying) {
-                    int receivedBytes = 0;
-                    size_t remaining = reader.length;
-                    while(remaining > 0 && !dying) {
-                        receivedBytes  = ::read(socket, &readMsg[reader.offset], remaining);
-                        if(receivedBytes  > 0) {
-                            remaining -= receivedBytes;
-                            reader.offset += receivedBytes;
-                #ifndef MAPLE_MINI
-                            //~ if(receivedBytes>0) std::cout << "Read " << receivedBytes << ". Remaining: " << remaining << std::endl;
-                #endif
-                        }
-                    }
-                    if(!dying) {
-                        ((this)->*(reader.cb))();
-                    }
+                    readBytes();
                 }
                 //~ std::cout << getName() << ": Reader died " << socket << std::endl;
             }

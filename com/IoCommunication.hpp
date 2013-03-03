@@ -6,6 +6,7 @@
 #include <os/type_traits.hpp>
 #include <os/com/PostOffice.hpp>
 #include <os/mem/MemoryUnit.hpp>
+#include <errno.h>
 
 #ifdef MAPLE_MINI
 #include <wirish/wirish.h>
@@ -14,7 +15,6 @@ using namespace syrup;
 #else
 #include <unistd.h>
 #include <string>
-#include <errno.h>
 #endif
 
 namespace os {
@@ -220,8 +220,8 @@ namespace os {
             } reader;
 
         public:
-            void readBytes() {
-                if(0 == reader.remaining) return;
+            int readBytes() {
+                if(0 == reader.remaining) return -EINTR;
                 reader.receivedBytes  = ::read(socket, &readMsg[reader.offset], reader.remaining);
                 if(reader.receivedBytes  > 0) {
                     reader.remaining -= reader.receivedBytes;
@@ -232,9 +232,11 @@ namespace os {
                     if(0 == reader.remaining) {
                         if(!dying) {
                             ((this)->*(reader.cb))();
+                            return -EAGAIN;
                         }
                     }
                 }
+                return 0;
             }
 
             void readerLoop() {

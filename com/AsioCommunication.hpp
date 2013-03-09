@@ -64,7 +64,7 @@ namespace os {
                 while(!Parent::dying) {
                     mem = queue.next();
                     if(mem) {
-                        if(transmit(*mem)) {
+                        if(Parent::transmit(*mem)) {
                             queue.pop();
                         }
                     }

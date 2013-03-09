@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 #include <os/com/Dispatcher.hpp>
+#include <os/com/getSignal.hpp>
+
+INSTANTIATE_SIGNAL(int);
+INSTANTIATE_SIGNAL(char);
 
 int triggered = 0;
 int result = 0;

@@ -1,10 +1,11 @@
-#ifndef OS_COM_EXECUTOR_HPP_
-#define OS_COM_EXECUTOR_HPP_
+#ifndef OS_COM_DISPATCHER_HPP_
+#define OS_COM_DISPATCHER_HPP_
 
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <os/com/com.hpp>
+#include <os/com/Signal.hpp>
 #include <os/exceptions.hpp>
 #include <iostream>
 
@@ -13,31 +14,6 @@ namespace os {
     template<typename T> Signal<T>& getSignal();
 
     void running(const int isRunning);
-
-    template<typename T>
-    class Signal {
-        public:
-            T value;
-            std::mutex guard;
-            std::condition_variable cond;
-            int id;
-            Signal() : id(0) {};
-            void operator=(const T& val) {
-                std::lock_guard<std::mutex> l(guard);
-                value = val;
-                ++id;
-                cond.notify_all();
-            }
-            const T operator*() {
-                return value;
-            }
-    };
-
-    template<typename T>
-    Signal<T>& getSignal() {
-        static Signal<T> signal;
-        return signal;
-    }
 
     template<typename T>
     void yield(const T& val) {

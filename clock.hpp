@@ -1,3 +1,6 @@
+#ifndef OS_CLOCK_HPP_
+#define OS_CLOCK_HPP_
+
 #include <os/types.hpp>
 #include <time.h>
 
@@ -11,3 +14,5 @@ namespace os {
         int ticks;
     };
 }
+
+#endif

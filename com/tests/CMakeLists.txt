@@ -1,4 +1,4 @@
-make_test(DispatcherTests)
+make_test(DispatcherTests $<TARGET_OBJECTS:os_com>)
 make_test(LocalSerialCommunicationTests)
 target_link_libraries(LocalSerialCommunicationTests
     utils

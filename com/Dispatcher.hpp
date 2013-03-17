@@ -13,8 +13,6 @@ namespace os {
     template<typename T> class Signal;
     template<typename T> Signal<T>& getSignal();
 
-    void running(const int isRunning);
-
     template<typename T>
     void yield(const T& val) {
         getSignal<T>() = val;
@@ -44,6 +42,16 @@ namespace os {
             }
     };
 
+    enum DispatcherActivityControl {
+        DAC_ACTIVATING,
+        DAC_DEACTIVATING,
+        DAC_QUERY,
+        DAC_WAIT,
+        DAC_DIE,
+        DAC_RESET
+    };
+
+    int activeDispatcherActions(DispatcherActivityControl);
     template<typename T, typename... TARG>
     class Dispatcher : public Via<TARG>... {
         public:
@@ -96,7 +104,7 @@ namespace os {
             void run() {
                 try {
                     while(!dying) {
-                        (that->*action)(Via<TARG>::value()...);
+                        performAction(Via<TARG>::value()...);
                         std::unique_lock<std::mutex> l(invokationGuard);
                         ++invokations;
                         cond.notify_all();
@@ -106,6 +114,12 @@ namespace os {
                 catch (std::exception& e) {
                     std::cerr << e.what();
                 }
+            }
+
+            void performAction(TARG... args) {
+                activeDispatcherActions(DAC_ACTIVATING);
+                (that->*action)(args...);
+                activeDispatcherActions(DAC_DEACTIVATING);
             }
     };
 }

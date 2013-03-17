@@ -3,7 +3,7 @@
 
 #include <os/com/Signal.hpp>
 
-#define INSTANTIATE_SIGNAL(type)    template bool os::getSignal<type>(Signal<type>*&)
+#define INSTANTIATE_SIGNAL(type)    template bool os::getSignal<type>(os::Signal<type>*&)
 
 namespace os {
     template<typename T> bool getSignal(Signal<T>*& s) {

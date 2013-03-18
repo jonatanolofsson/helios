@@ -7,14 +7,19 @@ INSTANTIATE_SIGNAL(os::Jiffy);
 namespace os {
     void dispatcherActionCounter(const int cmd) {
         static int runningActions = 0;
-        static std::condition_variable cond;
         static std::mutex guard;
         static Jiffy jiffy;
-        std::unique_lock<std::mutex> l(guard);
 
-        runningActions += (int)cmd;
-        if (cmd < 0 && runningActions == 0) {
-            cond.notify_all();
+        bool yieldJiffy;
+
+        {
+            std::unique_lock<std::mutex> l(guard);
+            //~ std::cout << "Action counter: " << runningActions << " + " << cmd << " = " << runningActions + cmd << std::endl;
+            runningActions += cmd;
+            yieldJiffy = ((cmd < 0) && (runningActions == 0));
+        }
+
+        if (yieldJiffy) {
             yield(++jiffy);
         }
     }

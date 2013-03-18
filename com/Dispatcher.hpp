@@ -11,37 +11,30 @@
 #include <iostream>
 
 namespace os {
-    template<typename T> class Signal;
-    template<typename T> Signal<T>& getSignal();
     void dispatcherActionCounter(const int);
 
     template<typename T>
     void yield(const T& val) {
         dispatcherActionCounter(1);
-        getSignal<T>() = val;
+        getSignal<T>().push(val);
     }
 
     template<typename T>
     class Via {
         private:
             Signal<T>& signal;
-            int lastId;
             bool dying;
         protected:
-            Via() : signal(getSignal<T>()), lastId(0), dying(false) {}
+            Via() : signal(getSignal<T>()), dying(false) {}
             ~Via() {
                 halt();
             }
             void halt() {
                 dying = true;
-                signal.cond.notify_all();
+                signal.notify_all();
             }
             const T value() {
-                std::unique_lock<std::mutex> l(signal.guard);
-                while(lastId == signal.id && !dying) signal.cond.wait(l);
-                if(dying) throw os::HaltException();
-                lastId = signal.id;
-                return *signal;
+                return signal.nextValue(dying);
             }
     };
 
@@ -104,7 +97,7 @@ namespace os {
                         cond.notify_all();
                     }
                 }
-                catch (os::HaltException& e) {}
+                catch (const os::HaltException& e) {}
                 catch (std::exception& e) {
                     std::cerr << e.what();
                 }

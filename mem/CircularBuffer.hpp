@@ -4,6 +4,9 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <os/exceptions.hpp>
+
+#include <iostream>
 
 namespace os {
     template<typename T, int N>
@@ -74,14 +77,53 @@ namespace os {
             }
 
             /**
+             * \brief   Set the next input as ready
+             */
+            void push(const T& v) {
+                *reserve() = v;
+                push();
+            }
+
+            /**
              * \brief   Return pointer to the first unit in the buffer.
              */
             T* next() {
                 std::unique_lock<std::mutex> l(counterGuard);
-                while(!dying && oPointer == iPointer) ocond.wait(l);
+                while(!dying && empty()) ocond.wait(l);
                 if(dying) return nullptr;
                 //~ std::cout << "Got next in queue" << std::endl;
                 return &storage[oPointer.index()];
+            }
+
+            /**
+             * \brief   Return pointer to the first unit in the buffer.
+             */
+            T* next(volatile bool& bailout) {
+                std::unique_lock<std::mutex> l(counterGuard);
+                while(!dying && empty() && !bailout) ocond.wait(l);
+                if(bailout) throw os::HaltException();
+                if(dying) return nullptr;
+                //~ std::cout << "Got next in queue" << std::endl;
+                return &storage[oPointer.index()];
+            }
+
+            /**
+             * \brief   Return the first unit in the buffer.
+             */
+            T nextValue() {
+                return *next();
+            }
+
+            /**
+             * \brief   Return the first unit in the buffer.
+             */
+            T nextValue(volatile bool& bailout) {
+                auto v = next(bailout);
+                if(nullptr == v) {
+                    throw os::HaltException();
+                }
+                pop();
+                return *v;
             }
 
             /**
@@ -89,13 +131,7 @@ namespace os {
              */
             T* nextOrNot() {
                 std::unique_lock<std::mutex> l(counterGuard);
-                if(oPointer == iPointer) {
-                    return nullptr;
-                }
-                while(!dying && oPointer == iPointer) ocond.wait(l);
-                if(dying) return nullptr;
-                //~ std::cout << "Got next in queue" << std::endl;
-                return &storage[oPointer.index()];
+                return (empty() ? nullptr : &storage[oPointer.index()]);
             }
 
             /**
@@ -103,11 +139,26 @@ namespace os {
              */
             void pop() {
                 std::unique_lock<std::mutex> l(counterGuard);
-                if(!(oPointer == iPointer)) {
-                    //~ std::cout << "Pop from queue" << std::endl;
+                if(!empty()) {
+                    //~ std::cout << "Popped from queue" << std::endl;
                     ++oPointer;
                     icond.notify_all();
                 }
+            }
+
+            /**
+             * \brief   Check if the buffer is empty
+             */
+            bool empty() const {
+                return (oPointer == iPointer);
+            }
+
+            /**
+             * \brief   Wake up all waiting threads e.g. to check for bailout
+             */
+            void notify_all() {
+                ocond.notify_all();
+                icond.notify_all();
             }
     };
 }

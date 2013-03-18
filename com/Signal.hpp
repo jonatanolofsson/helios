@@ -3,25 +3,19 @@
 #define OS_COM_SIGNAL_HPP_
 #include <mutex>
 #include <condition_variable>
+#include <os/mem/CircularBuffer.hpp>
 
 namespace os {
     template<typename T>
     class Signal {
         public:
-            T value;
-            std::mutex guard;
-            std::condition_variable cond;
-            int id;
-            Signal() : id(0) {}
-            void operator=(const T& val) {
-                std::lock_guard<std::mutex> l(guard);
-                value = val;
-                ++id;
-                cond.notify_all();
-            }
-            const T operator*() {
-                return value;
-            }
+            os::CircularBuffer<T, 10> values;
+            ~Signal() { kill(); }
+            void kill() { values.kill(); }
+            void push(const T& val) { values.push(val); }
+            const T nextValue(volatile bool& bailout) { return values.nextValue(bailout); }
+            bool empty() const { return values.empty(); }
+            void notify_all() { values.notify_all(); }
     };
 
     template<typename T> bool getSignal(Signal<T>*& s);

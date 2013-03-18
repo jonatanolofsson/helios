@@ -1,4 +1,3 @@
-#include <os/exceptions.hpp>
 #include <os/com/Dispatcher.hpp>
 #include <os/com/getSignal.hpp>
 #include <os/clock.hpp>

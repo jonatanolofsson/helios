@@ -1,3 +1,4 @@
+#pragma once
 #ifndef SERIAL_MESSAGE_HPP_
 #define SERIAL_MESSAGE_HPP_
 

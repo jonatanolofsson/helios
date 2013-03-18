@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_CLOCK_HPP_
 #define OS_CLOCK_HPP_
 

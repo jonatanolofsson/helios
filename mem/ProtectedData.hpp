@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_SHARED_PROTECTED_DATA_HPP_
 #define OS_SHARED_PROTECTED_DATA_HPP_
 

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_MEM_CIRCULARBUFFER_HPP_
 #define OS_MEM_CIRCULARBUFFER_HPP_
 

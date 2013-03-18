@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_UTILS_OPENPTY_HPP_
 #define OS_UTILS_OPENPTY_HPP_
 

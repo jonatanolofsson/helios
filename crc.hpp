@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_CRC_HPP_
 #define OS_CRC_HPP_
 

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_COM_MESSAGEDISPATCHER_HPP_
 #define OS_COM_MESSAGEDISPATCHER_HPP_
 

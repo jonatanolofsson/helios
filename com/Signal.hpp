@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_COM_SIGNAL_HPP_
 #define OS_COM_SIGNAL_HPP_
 #include <mutex>

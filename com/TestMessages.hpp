@@ -1,3 +1,4 @@
+#pragma once
 #ifndef TESTMESSAGES_HPP_
 #define TESTMESSAGES_HPP_
 

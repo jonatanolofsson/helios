@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_TYPE_TRAITS_HPP_
 #define OS_TYPE_TRAITS_HPP_
 

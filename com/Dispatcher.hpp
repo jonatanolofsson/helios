@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_COM_DISPATCHER_HPP_
 #define OS_COM_DISPATCHER_HPP_
 
@@ -12,9 +13,11 @@
 namespace os {
     template<typename T> class Signal;
     template<typename T> Signal<T>& getSignal();
+    void dispatcherActionCounter(const int);
 
     template<typename T>
     void yield(const T& val) {
+        dispatcherActionCounter(1);
         getSignal<T>() = val;
     }
 
@@ -42,16 +45,6 @@ namespace os {
             }
     };
 
-    enum DispatcherActivityControl {
-        DAC_ACTIVATING,
-        DAC_DEACTIVATING,
-        DAC_QUERY,
-        DAC_WAIT,
-        DAC_DIE,
-        DAC_RESET
-    };
-
-    int activeDispatcherActions(DispatcherActivityControl);
     template<typename T, typename... TARG>
     class Dispatcher : public Via<TARG>... {
         public:
@@ -83,6 +76,7 @@ namespace os {
             void join_next() {
                 dying = true;
             }
+
         private:
             template<typename... TYPES>
             struct HaltVia {static void halt(Dispatcher<T, TARG...>*){}};
@@ -117,9 +111,8 @@ namespace os {
             }
 
             void performAction(TARG... args) {
-                activeDispatcherActions(DAC_ACTIVATING);
                 (that->*action)(args...);
-                activeDispatcherActions(DAC_DEACTIVATING);
+                dispatcherActionCounter(-(int)sizeof...(args));
             }
     };
 }

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_EXCEPTIONS_HPP_
 #define OS_EXCEPTIONS_HPP_
 

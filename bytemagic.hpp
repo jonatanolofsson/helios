@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_BYTEMAGIC_HPP_
 #define OS_BYTEMAGIC_HPP_
 

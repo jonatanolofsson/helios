@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_COM_ASIOCOMMUNICATION_HPP_
 #define OS_COM_ASIOCOMMUNICATION_HPP_
 

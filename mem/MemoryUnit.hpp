@@ -1,3 +1,4 @@
+#pragma once
 #ifndef OS_MEM_MEMORYUNIT_HPP_
 #define OS_MEM_MEMORYUNIT_HPP_
 

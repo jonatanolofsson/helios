@@ -46,7 +46,7 @@ namespace os {
             void start() {
                 //~ std::cout << "Starting " << getName() << std::endl;
                 Parent::start();
-                readerThread = std::thread(&Self::readerLoop, this);
+                readerThread = std::thread(&Parent::readerLoop, this);
                 writerThread = std::thread(&Self::transmitLoop, this);
             }
 

@@ -16,6 +16,7 @@ using namespace syrup;
 #else
 #include <unistd.h>
 #include <string>
+#include <iostream>
 #endif
 
 namespace os {
@@ -88,6 +89,15 @@ namespace os {
                 reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateFirstSeparator);
             }
 
+            void invalidMessage() {
+                #ifndef MAPLE_MINI
+                //~ std::cout << "Invalid message" << std::endl;
+                #else
+                //~ digitalWrite(BOARD_LED_PIN, 1);
+                #endif
+                startReceive();
+            }
+
             void validateFirstSeparator() {
                 #ifndef MAPLE_MINI
                 //~ std::cout << getName() << ": " << "Got separator, #" << std::endl;
@@ -97,8 +107,10 @@ namespace os {
                     reader.reset();
                     reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateSecondarySeparators);
                 } else {
-                    //~ std::cerr << getName() << ": " << "Invalid separator. " << std::endl;
-                    startReceive();
+                    #ifndef MAPLE_MINI
+                    //~ std::cerr << getName() << ": " << "Invalid separator: " << (int)readMsg[0] << ". " << std::endl;
+                    #endif
+                    invalidMessage();
                 }
             }
 
@@ -175,9 +187,9 @@ namespace os {
                     reader.read(msginfo.header.length, &Self::validateReceivedBody);
                 } else {
                     #ifndef MAPLE_MINI
-                    //~ std::cerr << getName() << ": " << "Invalid header" << std::endl;
+                    std::cerr << getName() << ": " << "Invalid header" << std::endl;
                     #endif
-                    startReceive();
+                    invalidMessage();
                 }
             }
 
@@ -186,19 +198,27 @@ namespace os {
                     msginfo.body,
                     msginfo.header.length
                 );
+                #ifndef MAPLE_MINI
+                //~ std::cerr << getName() << ": " << msginfo.header.length << std::endl;
+                //~ std::cerr << getName() << ": " << msginfo.bodyCRC << "  =? " << msginfo.header.bodyCRC << std::endl;
+                #endif
                 return (msginfo.bodyCRC == msginfo.header.bodyCRC);
             }
 
             void validateReceivedBody() {
                 if(validateBody()) {
+                    #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid body" << std::endl;
+                    #endif
                     PostOffice<M>::dispatch(msginfo.header.id, msginfo.body, msginfo.header.length);
+                    /* Restart */
+                    startReceive();
                 } else {
-                    //~ std::cerr << getName() << ": " << "Invalid body" << std::endl;
+                    #ifndef MAPLE_MINI
+                    std::cerr << getName() << ": " << "Invalid body" << std::endl;
+                    #endif
+                    invalidMessage();
                 }
-
-                /* Restart */
-                startReceive();
             }
 
             struct reader_ {
@@ -250,13 +270,8 @@ namespace os {
 
             bool transmit(const MemUnit& mem) {
                 bool returnValue = true;
-#ifdef MAPLE_MINI
-                //~ Serial3.write('0' + mem.length()-16);
-                //~ return true;
-#endif
                 if(::write(socket, mem.data(), mem.length()) != (int)mem.length())
                 {
-                    //~ std::cerr << "write(" << socket << ") failed: " << errno << std::endl;
                     returnValue = false;
                 }
                 return returnValue;
@@ -267,7 +282,6 @@ namespace os {
 
             template<typename T>
             void send(const T& contents) {
-                //~ static_assert(os::SameType<typename M::template Message<T::ID>::Type, T>::value, "Invalid message type.");
                 if(dying) {
                     return;
                 }

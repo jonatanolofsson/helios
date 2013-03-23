@@ -13,7 +13,7 @@ namespace os {
             ~Signal() { kill(); }
             void kill() { values.kill(); }
             void push(const T& val) { values.push(val); }
-            const T nextValue(volatile bool& bailout) { return values.nextValue(bailout); }
+            const T nextValue(volatile bool& bailout) { return values.popNextValue(bailout); }
             bool empty() const { return values.empty(); }
             void notify_all() { values.notify_all(); }
     };

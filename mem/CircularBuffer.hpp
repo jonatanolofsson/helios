@@ -58,7 +58,10 @@ namespace os {
              */
             T* reserve() {
                 std::unique_lock<std::mutex> l(counterGuard);
-                while(!dying && oPointer == (iPointer+1)) icond.wait(l);
+                while(!dying && oPointer == (iPointer+1)) {
+                    //~ std::cout << "Buffer full.." << std::endl;
+                    icond.wait(l);
+                }
                 if(dying) return nullptr;
                 //~ std::cout << "Reserved space in queue" << std::endl;
                 inputGuard.lock();
@@ -85,7 +88,7 @@ namespace os {
             }
 
             /**
-             * \brief   Return pointer to the first unit in the buffer.
+             * \brief   Return pointer to the next free unit in the buffer.
              */
             T* next() {
                 std::unique_lock<std::mutex> l(counterGuard);
@@ -96,7 +99,7 @@ namespace os {
             }
 
             /**
-             * \brief   Return pointer to the first unit in the buffer.
+             * \brief   Return pointer to the next free unit in the buffer.
              */
             T* next(volatile bool& bailout) {
                 std::unique_lock<std::mutex> l(counterGuard);
@@ -117,7 +120,7 @@ namespace os {
             /**
              * \brief   Return the first unit in the buffer.
              */
-            T nextValue(volatile bool& bailout) {
+            T popNextValue(volatile bool& bailout) {
                 auto v = next(bailout);
                 if(nullptr == v) {
                     throw os::HaltException();

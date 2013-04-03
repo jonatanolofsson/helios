@@ -59,7 +59,7 @@ namespace os {
             T* reserve() {
                 std::unique_lock<std::mutex> l(counterGuard);
                 while(!dying && oPointer == (iPointer+1)) {
-                    //~ std::cout << "Buffer full.." << std::endl;
+                    std::cout << "Buffer full.. " << typeid(T).name() << std::endl;
                     icond.wait(l);
                 }
                 if(dying) return nullptr;

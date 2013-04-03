@@ -14,9 +14,21 @@ namespace os {
     void dispatcherActionCounter(const int);
 
     template<typename T>
+    unsigned int viaCounter(const int c) {
+        static int activeVias = 0;
+        activeVias += c;
+        return activeVias;
+    }
+
+    template<typename T>
     void yield(const T& val) {
-        dispatcherActionCounter(1);
-        getSignal<T>().push(val);
+        if(viaCounter<T>(0) > 0) {
+            dispatcherActionCounter(1);
+            getSignal<T>().push(val);
+        }
+        //~ else {
+            //~ std::cout << "No recipient for " << typeid(T).name() << std::endl;
+        //~ }
     }
 
     template<typename T>
@@ -25,9 +37,10 @@ namespace os {
             Signal<T>& signal;
             bool dying;
         protected:
-            Via() : signal(getSignal<T>()), dying(false) {}
+            Via() : signal(getSignal<T>()), dying(false) {viaCounter<T>(1);}
             ~Via() {
                 halt();
+                viaCounter<T>(-1);
             }
             void halt() {
                 dying = true;

@@ -17,10 +17,10 @@ namespace os {
             template<typename M::Id ID>
             void registerPackager(const typename Packager::Callback packagerCallback) {
                 static_assert(ID < M::numberOfMessages, "Invalid ID");
-                static_assert(alignof(typename M::template Message<ID>::Type) > 0, "Invalid alignment");
+                static_assert(alignof(typename M::template ById<ID>::Type) > 0, "Invalid alignment");
                 packagers[ID] = {
                     packagerCallback,
-                    alignof(typename M::template Message<ID>::Type)
+                    alignof(typename M::template ById<ID>::Type)
                 };
             }
 

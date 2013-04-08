@@ -75,7 +75,7 @@ namespace os {
         public:
             template<typename T>
             void send(const T& contents) {
-                static_assert(os::SameType<typename M::template Message<T::ID>::Type, T>::value, "Invalid message type.");
+                static_assert(os::SameType<typename M::template ById<T::ID>::Type, T>::value, "Invalid message type.");
                 if(Parent::dying) {
                     return;
                 }

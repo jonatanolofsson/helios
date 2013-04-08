@@ -13,6 +13,7 @@
 #define LOAD_N                          100000
 
 using namespace os;
+using namespace testmessages;
 
 struct Stats_t {
     struct {
@@ -37,7 +38,7 @@ std::mutex localMessageGuard;
 std::mutex mcuMessageGuard;
 std::condition_variable localCond;
 std::condition_variable mcuCond;
-typedef SerialCommunication<TestMessages, 100, 10, false> Serial;
+typedef SerialCommunication<testmessages::Messages, 100, 10, false> Serial;
 Serial* glocal;
 Serial* gmcu;
 
@@ -124,12 +125,12 @@ class SerialCommunicationTests : public ::testing::Test {
         , local("local")
         , mcu("mcu")
         {
-            local.registerPackager<TestMessages::Id::myTestMessage0>(localMessageHandler0);
-            local.registerPackager<TestMessages::Id::myTestMessage1>(localMessageHandler1);
-            local.registerPackager<TestMessages::Id::myTestMessage2>(localMessageHandler2);
-            mcu.registerPackager<TestMessages::Id::myTestMessage0>(mcuMessageHandler0);
-            mcu.registerPackager<TestMessages::Id::myTestMessage1>(mcuMessageHandler1);
-            mcu.registerPackager<TestMessages::Id::myTestMessage2>(mcuMessageHandler2);
+            local.registerPackager<testmessages::Messages::Id::myTestMessage0>(localMessageHandler0);
+            local.registerPackager<testmessages::Messages::Id::myTestMessage1>(localMessageHandler1);
+            local.registerPackager<testmessages::Messages::Id::myTestMessage2>(localMessageHandler2);
+            mcu.registerPackager<testmessages::Messages::Id::myTestMessage0>(mcuMessageHandler0);
+            mcu.registerPackager<testmessages::Messages::Id::myTestMessage1>(mcuMessageHandler1);
+            mcu.registerPackager<testmessages::Messages::Id::myTestMessage2>(mcuMessageHandler2);
             stats.reset();
             glocal = &local;
             gmcu = &mcu;

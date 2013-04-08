@@ -14,6 +14,7 @@
 #define LOAD_N                          100000
 
 using namespace os;
+using namespace testmessages;
 
 struct Stats_t {
     struct {
@@ -38,8 +39,8 @@ std::mutex serverMessageGuard;
 std::mutex clientMessageGuard;
 std::condition_variable serverCond;
 std::condition_variable clientCond;
-typedef os::NetworkServer<8810, TestMessages, 100, 10> Server;
-typedef os::NetworkClient<8810, TestMessages, 100, 10> Client;
+typedef os::NetworkServer<8810, testmessages::Messages, 100, 10> Server;
+typedef os::NetworkClient<8810, testmessages::Messages, 100, 10> Client;
 Server* gserver;
 Client* gclient;
 
@@ -125,12 +126,12 @@ class NetworkCommunicationTests : public ::testing::Test {
         NetworkCommunicationTests()
         : client("localhost")
         {
-            server.registerPackager<TestMessages::Id::myTestMessage0>(serverMessageHandler0);
-            server.registerPackager<TestMessages::Id::myTestMessage1>(serverMessageHandler1);
-            server.registerPackager<TestMessages::Id::myTestMessage2>(serverMessageHandler2);
-            client.registerPackager<TestMessages::Id::myTestMessage0>(clientMessageHandler0);
-            client.registerPackager<TestMessages::Id::myTestMessage1>(clientMessageHandler1);
-            client.registerPackager<TestMessages::Id::myTestMessage2>(clientMessageHandler2);
+            server.registerPackager<testmessages::Messages::Id::myTestMessage0>(serverMessageHandler0);
+            server.registerPackager<testmessages::Messages::Id::myTestMessage1>(serverMessageHandler1);
+            server.registerPackager<testmessages::Messages::Id::myTestMessage2>(serverMessageHandler2);
+            client.registerPackager<testmessages::Messages::Id::myTestMessage0>(clientMessageHandler0);
+            client.registerPackager<testmessages::Messages::Id::myTestMessage1>(clientMessageHandler1);
+            client.registerPackager<testmessages::Messages::Id::myTestMessage2>(clientMessageHandler2);
             stats.reset();
             gserver = &server;
             gclient = &client;

@@ -82,53 +82,55 @@ namespace os {
             Message msginfo;
 
             void startReceive() {
-                #ifndef MAPLE_MINI
+                //~ #ifndef MAPLE_MINI
                 //~ std::cout << getName() << ": " << "Start receive" << std::endl;
-                #endif
+                //~ #endif
                 reader.reset();
                 reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateFirstSeparator);
             }
 
             void invalidMessage() {
-                #ifndef MAPLE_MINI
-                //~ std::cout << "Invalid message" << std::endl;
-                #else
+                //~ #ifndef MAPLE_MINI
+                //~ std::cout << getName() << ": Invalid message" << std::endl;
+                //~ #else
                 //~ digitalWrite(BOARD_LED_PIN, 1);
-                #endif
+                //~ #endif
                 startReceive();
             }
 
             void validateFirstSeparator() {
-                #ifndef MAPLE_MINI
-                //~ std::cout << getName() << ": " << "Got separator, #" << std::endl;
-                #endif
+                //~ #ifndef MAPLE_MINI
+                //~ std::cout << getName() << ": " << "Got separator" << std::endl;
+                //~ #endif
                 if((readMsg[0] == SERIAL_MESSAGE_SEPARATOR)) {
+                    //~ #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid separator" << std::endl;
+                    //~ #endif
                     reader.reset();
                     reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateSecondarySeparators);
                 } else {
-                    #ifndef MAPLE_MINI
-                    //~ std::cerr << getName() << ": " << "Invalid separator: " << (int)readMsg[0] << ". " << std::endl;
-                    #endif
+                    //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": " << "Invalid separator: " << (int)readMsg[0] << ". " << std::endl;
+                    //~ #endif
                     invalidMessage();
                 }
             }
 
             void validateSecondarySeparators() {
-                #ifndef MAPLE_MINI
+                //~ #ifndef MAPLE_MINI
                 //~ std::cout << getName() << ": " << "Got next" << std::endl;
-                #endif
+                //~ #endif
                 if(readMsg[0] == SERIAL_MESSAGE_SEPARATOR) {
-                    #ifndef MAPLE_MINI
+                    //~ #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid separator" << std::endl;
-                    #endif
+                    //~ #endif
                     // Another separator was received.
                     reader.reset();
                     reader.read(SERIAL_MESSAGE_SEPARATOR_LENGTH, &Self::validateSecondarySeparators);
                 } else {
-                    #ifndef MAPLE_MINI
+                    //~ #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Partial header. Read another " << (SERIAL_MESSAGE_HEADER_LENGTH-1) << " bytes." << std::endl;
-                    #endif
+                    //~ #endif
                     // No more separators received, interpret as header and continue to read as such
                     reader.read(SERIAL_MESSAGE_HEADER_LENGTH-1, &Self::validateReceivedHeader);
                 }
@@ -139,39 +141,42 @@ namespace os {
                 msginfo.header.length    = fromBytes<decltype(msginfo.header.length)>(readMsg    + SERIAL_MESSAGE_LENGTH_OFFSET);
                 msginfo.header.bodyCRC   = fromBytes<decltype(msginfo.header.bodyCRC)>(readMsg   + SERIAL_MESSAGE_BODYCRC_OFFSET);
                 msginfo.header.headerCRC = fromBytes<decltype(msginfo.header.headerCRC)>(readMsg + SERIAL_MESSAGE_HEADERCRC_OFFSET);
+                //~ std::cout << getName() << ": Id, length, bodyCRC: " << msginfo.header.id << ", " << msginfo.header.length << ", " << msginfo.header.bodyCRC << std::endl;
+                //~ U16 shouldBe[4] = {0x10, 0x20, 0x40, 0x80};
+                //~ std::cout << getName() << ": Bodycrc should be: " << crc16((U8*)shouldBe, sizeof(shouldBe)) << std::endl;
 
                 msginfo.headerCRC = crc16(
                     readMsg,
                     sizeof(MessageHeader::id) + sizeof(MessageHeader::length) + sizeof(MessageHeader::bodyCRC)
                 );
                 if(msginfo.headerCRC != msginfo.header.headerCRC) {
-                    #ifndef MAPLE_MINI
-                    //~ std::cerr << getName() << ": Invalid header crc: " << msginfo.headerCRC << " vs " << msginfo.header.headerCRC << std::endl;
-                    #endif
-                    //~ std::cerr << msginfo.header.id << " " << msginfo.header.length << std::endl;
+                    //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": Invalid header crc: " << msginfo.headerCRC << " vs " << msginfo.header.headerCRC << std::endl;
+                    //~ #endif
+                    //~ std::cout << msginfo.header.id << " " << msginfo.header.length << std::endl;
                     return false;
                 }
                 if(msginfo.header.id >= M::numberOfMessages) {
-                #ifndef MAPLE_MINI
-                    //~ std::cerr << getName() << ": Invalid id: " << msginfo.header.id << std::endl;
-                #endif
+                //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": Invalid id: " << msginfo.header.id << std::endl;
+                //~ #endif
                     return false;
                 }
 
                 std::size_t alignment = PostOffice<M>::getAlignment(msginfo.header.id);
                 if(alignment == 0) {
-                #ifndef MAPLE_MINI
-                    //~ std::cerr << getName() << ": Invalid packager: " << msginfo.header.id << std::endl;
-                #endif
+                //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": Invalid packager: " << msginfo.header.id << std::endl;
+                //~ #endif
                     return false;
                 }
                 msginfo.body = os::addAlignment(readMsg + reader.offset, alignment);
                 reader.offset += os::alignmentToAdd(readMsg + reader.offset, alignment);
 
                 if(sizeof(MessageHeader) + msginfo.header.length + alignment - 1 > MAX_MESSAGE_SIZE) {
-                #ifndef MAPLE_MINI
-                    //~ std::cerr << getName() << ": Message too big: " << msginfo.header.length << std::endl;
-                #endif
+                //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": Message too big: " << msginfo.header.length << std::endl;
+                //~ #endif
                     // Message to big.
                     /// \todo Warn
                     return false;
@@ -180,15 +185,16 @@ namespace os {
             }
 
             void validateReceivedHeader() {
+                //~ std::cout << "Validating header" << std::endl;
                 if(validateHeader()) {
-                    #ifndef MAPLE_MINI
+                    //~ #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid header. Receive: " << msginfo.header.length << std::endl;
-                    #endif
+                    //~ #endif
                     reader.read(msginfo.header.length, &Self::validateReceivedBody);
                 } else {
-                    #ifndef MAPLE_MINI
-                    std::cerr << getName() << ": " << "Invalid header" << std::endl;
-                    #endif
+                    //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": " << "Invalid header" << std::endl;
+                    //~ #endif
                     invalidMessage();
                 }
             }
@@ -198,25 +204,25 @@ namespace os {
                     msginfo.body,
                     msginfo.header.length
                 );
-                #ifndef MAPLE_MINI
-                //~ std::cerr << getName() << ": " << msginfo.header.length << std::endl;
-                //~ std::cerr << getName() << ": " << msginfo.bodyCRC << "  =? " << msginfo.header.bodyCRC << std::endl;
-                #endif
+                //~ #ifndef MAPLE_MINI
+                //~ std::cout << getName() << ": " << msginfo.header.length << std::endl;
+                //~ std::cout << getName() << ": " << msginfo.bodyCRC << "  =? " << msginfo.header.bodyCRC << std::endl;
+                //~ #endif
                 return (msginfo.bodyCRC == msginfo.header.bodyCRC);
             }
 
             void validateReceivedBody() {
                 if(validateBody()) {
-                    #ifndef MAPLE_MINI
+                    //~ #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid body" << std::endl;
-                    #endif
+                    //~ #endif
                     PostOffice<M>::dispatch(msginfo.header.id, msginfo.body, msginfo.header.length);
                     /* Restart */
                     startReceive();
                 } else {
-                    #ifndef MAPLE_MINI
-                    std::cerr << getName() << ": " << "Invalid body" << std::endl;
-                    #endif
+                    //~ #ifndef MAPLE_MINI
+                    //~ std::cout << getName() << ": " << "Invalid body" << std::endl;
+                    //~ #endif
                     invalidMessage();
                 }
             }
@@ -247,9 +253,9 @@ namespace os {
                 if(reader.receivedBytes  > 0) {
                     reader.remaining -= reader.receivedBytes;
                     reader.offset += reader.receivedBytes;
-                    #ifndef MAPLE_MINI
-                    //~ if(receivedBytes>0) std::cout << "Read " << receivedBytes << ". Remaining: " << remaining << std::endl;
-                    #endif
+                    //~ #ifndef MAPLE_MINI
+                    //~ std::cout << "Read " << reader.receivedBytes << ". Remaining: " << reader.remaining << std::endl;
+                    //~ #endif
                     if(0 == reader.remaining) {
                         if(!dying) {
                             ((this)->*(reader.cb))();
@@ -276,6 +282,20 @@ namespace os {
                 }
                 return returnValue;
             }
+
+            #ifndef MAPLE_MINI
+            bool sendString(const std::string& mem) {
+                bool returnValue = true;
+                if(::write(socket, mem.data(), mem.length()) != (int)mem.length())
+                {
+                    returnValue = false;
+                }
+                //~ if(!returnValue) {
+                    //~ std::cout << "Failed to write string " << mem << " to socket " << socket << std::endl;
+                //~ }
+                return returnValue;
+            }
+            #endif
 
 
             MemUnit mem[2];

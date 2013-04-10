@@ -21,6 +21,7 @@ namespace os {
             using Parent::tcpSocket;
             using Parent::socket;
             bool dying;
+            bool connected_;
 
             void setupAddress() {
                 serverAddress.sin_addr.s_addr = INADDR_ANY;
@@ -47,6 +48,7 @@ namespace os {
                         //~ std::cout << "Client connected on socket " << newSocket << std::endl;
                         Parent::cleanConnection();
                         socket = newSocket;
+                        connected_ = true;
                         int flag = 1;
                         int err = setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
                         if(err) {
@@ -62,11 +64,16 @@ namespace os {
             NetworkServer()
             : Parent("Server")
             , dying(false)
+            , connected_(false)
             {
                 setupAddress();
                 Parent::setupSocket();
                 listenOnConnection();
                 acceptThread = std::thread{[this](){this->acceptConnection();}};
+            }
+
+            bool connected() {
+                return connected_;
             }
 
             ~NetworkServer() {

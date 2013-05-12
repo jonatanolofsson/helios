@@ -12,6 +12,8 @@
 
 namespace os {
     void dispatcherActionCounter(const int);
+    void expect();
+    void gotExpected();
 
     template<typename T>
     unsigned int viaCounter(const int c) {
@@ -35,11 +37,19 @@ namespace os {
     class Via {
         private:
             Signal<T>& signal;
+            typename Signal<T>::SubCircle subCircle;
             bool dying;
         protected:
-            Via() : signal(getSignal<T>()), dying(false) {viaCounter<T>(1);}
+            Via()
+            : signal(getSignal<T>())
+            , dying(false)
+            {
+                viaCounter<T>(1);
+                signal.registerSubCircle(subCircle);
+            }
             ~Via() {
                 halt();
+                signal.unregisterSubCircle(subCircle);
                 viaCounter<T>(-1);
             }
             void halt() {
@@ -47,7 +57,7 @@ namespace os {
                 signal.notify_all();
             }
             const T value() {
-                return signal.nextValue(dying);
+                return subCircle.popNextValue(dying);
             }
     };
 

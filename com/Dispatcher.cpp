@@ -23,4 +23,11 @@ namespace os {
             yield(++jiffy);
         }
     }
+
+    void expect() {
+        dispatcherActionCounter(1);
+    }
+    void gotExpected() {
+        dispatcherActionCounter(-1);
+    }
 }

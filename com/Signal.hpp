@@ -3,20 +3,14 @@
 #define OS_COM_SIGNAL_HPP_
 #include <mutex>
 #include <condition_variable>
-#include <os/mem/CircularBuffer.hpp>
+#include <os/mem/MultiCircularBuffer.hpp>
 
 namespace os {
+    static const unsigned SIGNAL_BUFFER_LENGTH      = 10;
+
+
     template<typename T>
-    class Signal {
-        public:
-            os::CircularBuffer<T, 10> values;
-            ~Signal() { kill(); }
-            void kill() { values.kill(); }
-            void push(const T& val) { values.push(val); }
-            const T nextValue(volatile bool& bailout) { return values.popNextValue(bailout); }
-            bool empty() const { return values.empty(); }
-            void notify_all() { values.notify_all(); }
-    };
+    class Signal : public os::MultiCircularBuffer<T, SIGNAL_BUFFER_LENGTH> {};
 
     template<typename T> bool getSignal(Signal<T>*& s);
 

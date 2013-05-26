@@ -17,6 +17,7 @@ using namespace syrup;
 #include <unistd.h>
 #include <string>
 #include <iostream>
+#include <thread>
 #endif
 
 namespace os {
@@ -248,8 +249,10 @@ namespace os {
 
         public:
             int readBytes() {
+                int retVal = 0;
                 if(0 == reader.remaining) return -EINTR;
                 reader.receivedBytes  = ::read(socket, &readMsg[reader.offset], reader.remaining);
+                retVal = reader.receivedBytes;
                 if(reader.receivedBytes  > 0) {
                     reader.remaining -= reader.receivedBytes;
                     reader.offset += reader.receivedBytes;
@@ -263,15 +266,29 @@ namespace os {
                         }
                     }
                 }
-                return 0;
+                return retVal;
             }
 
             void readerLoop() {
+                //~ int yielded = 0;
+                //~ int noyield = 0;
                 //~ std::cout << getName() << ": " << "Reading from " << socket << std::endl;
                 while(!dying) {
+                    #ifndef MAPLE_MINI
+                    if(0 == readBytes()) {
+                        //~ ++yielded;
+                        std::this_thread::yield();
+                    }
+                    //~ else {
+                        //~ ++noyield;
+                    //~ }
+                    #else
                     readBytes();
+                    #endif
                 }
+
                 //~ std::cout << getName() << ": Reader died " << socket << std::endl;
+                //~ std::cout << getName() << ": Yielded vs noyield: " << yielded << "/" << noyield << " = " << ((float)yielded)/(float)(noyield) << std::endl;
             }
 
             bool transmit(const MemUnit& mem) {

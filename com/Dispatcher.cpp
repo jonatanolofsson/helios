@@ -3,6 +3,7 @@
 #include <os/clock.hpp>
 
 INSTANTIATE_SIGNAL(os::Jiffy);
+INSTANTIATE_SIGNAL(os::SystemTime);
 
 namespace os {
     void dispatcherActionCounter(const int cmd) {

@@ -10,6 +10,10 @@
 namespace os {
     template<typename M, int MAX_MESSAGE_SIZE, int MAX_QUEUE_LENGTH, int BAUD_RATE = B115200>
     class SerialCommunication : public AsioCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> {
+        public:
+            typedef M Messages;
+            typedef SerialCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH, BAUD_RATE> Self;
+
         private:
             typedef AsioCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> Parent;
             std::string portName;

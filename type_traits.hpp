@@ -9,6 +9,8 @@ namespace os {
 
     template<typename T1, typename T2>  struct SameType         { static const bool value = false; };
     template<typename T1>               struct SameType<T1, T1> { static const bool value = true; };
+    template<typename T, typename... Other> struct ReturnValue  { typedef typename std::result_of<T> type; };
+    template<typename... Args> inline void evalVariadic(Args&&...) {}
 }
 
 #endif

@@ -15,7 +15,7 @@ namespace os {
 
         {
             std::unique_lock<std::mutex> l(guard);
-            //~ std::cout << "Action counter: " << runningActions << " + " << cmd << " = " << runningActions + cmd << std::endl;
+            //std::cout << "Action counter: " << runningActions << " + " << cmd << " = " << runningActions + cmd << std::endl;
             runningActions += cmd;
             yieldJiffy = ((cmd < 0) && (runningActions == 0));
         }

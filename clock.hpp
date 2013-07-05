@@ -4,6 +4,7 @@
 
 #include <os/types.hpp>
 #include <time.h>
+#include <iostream>
 
 namespace os {
     struct clock {
@@ -18,6 +19,7 @@ namespace os {
         explicit SystemTime(const int v) : value(v) {}
         SystemTime& operator++() { ++value; return *this; }
     };
+    inline std::ostream& operator<<(std::ostream& os, const SystemTime& t) { return os << t.value; }
 
     struct Jiffy {
         int value;
@@ -25,6 +27,7 @@ namespace os {
         explicit Jiffy(const int v) : value(v) {}
         Jiffy& operator++() { ++value; return *this; }
     };
+    inline std::ostream& operator<<(std::ostream& os, const Jiffy& j) { return os << j.value; }
 }
 
 #endif

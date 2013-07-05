@@ -9,9 +9,20 @@
 #include <os/com/Signal.hpp>
 #include <os/exceptions.hpp>
 #include <iostream>
+#include <os/utils/eventlog.hpp>
 
 namespace os {
     void dispatcherActionCounter(const int);
+    struct DispatcherCounter {
+        int N;
+        DispatcherCounter(const int c = 1) : N(c) {
+            dispatcherActionCounter(N);
+        }
+        ~DispatcherCounter() {
+            dispatcherActionCounter(-N);
+        }
+    };
+
     void expect();
     void gotExpected();
 
@@ -25,7 +36,6 @@ namespace os {
     template<typename T>
     void yield(const T& val) {
         if(viaCounter<T>(0) > 0) {
-            dispatcherActionCounter(1);
             getSignal<T>().push(val);
         }
         //~ else {
@@ -127,8 +137,10 @@ namespace os {
             }
 
             void performAction(TARG... args) {
+                DispatcherCounter d;
+                //LOG_EVENT(typeid(T).name(), 0, "Executing actionfunction");
                 (that->*action)(args...);
-                dispatcherActionCounter(-(int)sizeof...(args));
+                //LOG_EVENT(typeid(T).name(), 0, "Returned from actionfunction.");
             }
     };
 }

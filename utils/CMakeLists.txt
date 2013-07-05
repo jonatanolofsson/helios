@@ -3,4 +3,6 @@ add_library(utils
     sprintf.cpp
 )
 
-add_subdirectory(tests)
+add_library(os_utils OBJECT eventlog.cpp)
+
+add_testdirectory(tests)

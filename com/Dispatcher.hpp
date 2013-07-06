@@ -12,6 +12,9 @@
 #include <os/utils/eventlog.hpp>
 
 namespace os {
+    void stopTime();
+    void startTime();
+    
     void dispatcherActionCounter(const int);
     struct DispatcherCounter {
         int N;

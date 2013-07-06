@@ -6,6 +6,11 @@ INSTANTIATE_SIGNAL(os::Jiffy);
 INSTANTIATE_SIGNAL(os::SystemTime);
 
 namespace os {
+    volatile bool timeIsRunning = false;
+
+    void stopTime() { timeIsRunning = false; }
+    void startTime() { timeIsRunning = true; }
+
     void dispatcherActionCounter(const int cmd) {
         static int runningActions = 0;
         static std::mutex guard;
@@ -20,7 +25,7 @@ namespace os {
             yieldJiffy = ((cmd < 0) && (runningActions == 0));
         }
 
-        if (yieldJiffy) {
+        if (yieldJiffy && timeIsRunning) {
             yield(++jiffy);
         }
     }

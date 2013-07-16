@@ -1,3 +1,4 @@
-add_library(core
+add_library(os_core OBJECT
     Signals.cpp
+    Semaphore.cpp
 )

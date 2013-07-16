@@ -10,44 +10,72 @@
 #include <os/exceptions.hpp>
 #include <iostream>
 #include <os/utils/eventlog.hpp>
+#include <os/types.hpp>
+#include <os/clock.hpp>
+#include <os/type_traits.hpp>
 
 namespace os {
     void stopTime();
     void startTime();
+    namespace internal {
+        extern std::mutex initGuard;
+        extern std::condition_variable initCondition;
+        extern int initializingDispatchers;
+        extern std::condition_variable allDispatchersInitialized;
+    }
+    JiffyType getCurrentTick();
+ 
+    template<typename T>
+    int typedCounter(const int c) {
+        static int count = 0;
+        static std::mutex guard;
+        std::unique_lock<std::mutex> l(guard);
+        count += c;
+        return count;
+    }
+
+    template<bool ASYNC> struct SynchronousDispatcherCounter {
+        typedef SynchronousDispatcherCounter<ASYNC> Self;
+        SynchronousDispatcherCounter() { up(); }
+        ~SynchronousDispatcherCounter() { down(); }
+        static unsigned int count() { return typedCounter<Self>(0); }
+        static void up() { typedCounter<Self>(1); }
+        static void down() { typedCounter<Self>(-1); }
+    };
+    template<> struct SynchronousDispatcherCounter<true> {
+        static void up() {}
+        static void down() {}
+    };
     
-    void dispatcherActionCounter(const int);
-    struct DispatcherCounter {
-        int N;
-        DispatcherCounter(const int c = 1) : N(c) {
-            dispatcherActionCounter(N);
-        }
-        ~DispatcherCounter() {
-            dispatcherActionCounter(-N);
-        }
+    void activeDispatcherCounter(const int);
+    template<bool ASYNC> struct ActiveDispatcherCounter { 
+        ~ActiveDispatcherCounter() { activeDispatcherCounter(-1); }
+    };
+    template<> struct ActiveDispatcherCounter<true> {
+        ActiveDispatcherCounter() { activeDispatcherCounter(1); }
+        ~ActiveDispatcherCounter() { activeDispatcherCounter(-1); }
     };
 
     void expect();
     void gotExpected();
 
-    template<typename T>
-    unsigned int viaCounter(const int c) {
-        static int activeVias = 0;
-        activeVias += c;
-        return activeVias;
-    }
 
     template<typename T>
     void yield(const T& val) {
-        if(viaCounter<T>(0) > 0) {
+        if(typedCounter<T>(0) > 0) {
             getSignal<T>().push(val);
+            LOG_EVENT(typeid(T).name(), 0, "Yielded value");
         }
-        //~ else {
-            //~ std::cout << "No recipient for " << typeid(T).name() << std::endl;
-        //~ }
+        else
+        {
+            LOG_EVENT(typeid(T).name(), 0, "Threw away value");
+        }
     }
 
     template<typename T>
     class Via {
+        public:
+            typedef Via<T> Self;
         private:
             Signal<T>& signal;
             typename Signal<T>::SubCircle subCircle;
@@ -57,15 +85,17 @@ namespace os {
             : signal(getSignal<T>())
             , dying(false)
             {
-                viaCounter<T>(1);
                 signal.registerSubCircle(subCircle);
+                LOG_EVENT(typeid(Self).name(), 0, "Created");
             }
             ~Via() {
                 halt();
                 signal.unregisterSubCircle(subCircle);
-                viaCounter<T>(-1);
+                typedCounter<T>(-1);
+                LOG_EVENT(typeid(Self).name(), 0, "Destroyed");
             }
             void halt() {
+                if(dying) return;
                 dying = true;
                 signal.notify_all();
             }
@@ -74,19 +104,29 @@ namespace os {
             }
     };
 
-    template<typename T, typename... TARG>
-    class Dispatcher : public Via<TARG>... {
+    template<bool ASYNC, typename T, typename... TARG>
+    class GeneralDispatcher : public Via<TARG>... {
         public:
             typedef void(T::*ActionFunction)(TARG...);
-            Dispatcher(const ActionFunction& fn, T* const that_)
+            typedef GeneralDispatcher<ASYNC, T, TARG...> Self;
+            GeneralDispatcher(const ActionFunction& fn, T* const that_)
                 : Via<TARG>()...
                 , that(that_)
                 , action(fn)
                 , invokations(0)
                 , dying(false)
-            { t = std::thread(&Dispatcher<T, TARG...>::run, this); }
-            ~Dispatcher() {
+            {
+                std::unique_lock<std::mutex> l(internal::initGuard);
+                ++internal::initializingDispatchers;
+                firstTick = getCurrentTick();
+                SynchronousDispatcherCounter<ASYNC>::up();
+                LOG_EVENT(typeid(Self).name(), 0, "Created dispatcher on tick " << firstTick);
+                t = std::thread(&Self::run, this);
+            }
+            ~GeneralDispatcher() {
                 join();
+                SynchronousDispatcherCounter<ASYNC>::down();
+                LOG_EVENT(typeid(Self).name(), 0, "Died");
             }
             void wait(const int last_invokation) {
                 std::unique_lock<std::mutex> l(invokationGuard);
@@ -108,10 +148,10 @@ namespace os {
 
         private:
             template<typename... TYPES>
-            struct HaltVia {static void halt(Dispatcher<T, TARG...>*){}};
+            struct HaltVia {static void halt(Self*){}};
             template<typename T0, typename... TYPES>
             struct HaltVia<T0, TYPES...> {
-                static void halt(Dispatcher<T, TARG...>* obj) {
+                static void halt(Self* obj) {
                     obj->Via<T0>::halt();
                     HaltVia<TYPES...>::halt(obj);
                 }
@@ -123,8 +163,20 @@ namespace os {
             const ActionFunction action;
             int invokations;
             bool dying;
+            JiffyType firstTick;
             std::thread t;
             void run() {
+                {
+                    LOG_EVENT(typeid(Self).name(), 0, "Synchronizing");
+                    std::unique_lock<std::mutex> l(internal::initGuard);
+                    while(getCurrentTick() == firstTick) internal::initCondition.wait(l);
+                    os::evalVariadic(typedCounter<TARG>(1)...);
+                    --internal::initializingDispatchers;
+                    if(internal::initializingDispatchers == 0) {
+                        internal::allDispatchersInitialized.notify_all();
+                    }
+                    LOG_EVENT(typeid(Self).name(), 0, "Synchronized");
+                }
                 try {
                     while(!dying) {
                         performAction(Via<TARG>::value()...);
@@ -140,12 +192,15 @@ namespace os {
             }
 
             void performAction(TARG... args) {
-                DispatcherCounter d;
-                //LOG_EVENT(typeid(T).name(), 0, "Executing actionfunction");
+                ActiveDispatcherCounter<ASYNC> dc;
+                LOG_EVENT(typeid(Self).name(), 0, "Executing actionfunction");
                 (that->*action)(args...);
-                //LOG_EVENT(typeid(T).name(), 0, "Returned from actionfunction.");
+                LOG_EVENT(typeid(Self).name(), 0, "Returned from actionfunction.");
             }
     };
+
+    template<typename T, typename... TARG> using Dispatcher = GeneralDispatcher<false, T, TARG...>;
+    template<typename T, typename... TARG> using AsynchronousDispatcher = GeneralDispatcher<true, T, TARG...>;
 }
 
 #endif

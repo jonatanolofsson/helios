@@ -89,21 +89,6 @@ namespace os {
                 queue.push();
             }
 
-            template<typename M::Id ID>
-            void sendRaw(const U8* contents, const std::size_t len) {
-                if(Parent::dying) {
-                    return;
-                }
-
-                MemUnit* mem = queue.reserve();
-                MessageHeader header = { ID, len };
-                Parent::signPackage(header, contents);
-                mem->cpy(SERIAL_MESSAGE_SEPARATOR);
-                mem->cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
-                mem->cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents, len);
-                queue.push();
-            }
-
             void close() {
                 if(Parent::dying) return;
                 //~ std::cout << getName() << ": Dying" << std::endl;

@@ -6,6 +6,8 @@
 #include <condition_variable>
 #include <os/exceptions.hpp>
 #include <assert.h>
+#include <os/core/Semaphore.hpp>
+#include <os/utils/eventlog.hpp>
 
 #include <iostream>
 
@@ -14,6 +16,7 @@ namespace os {
     template<typename T, int N>
     class MultiCircularBuffer {
         public:
+            typedef MultiCircularBuffer<T,N> Self;
             struct Index {
                 private:
                     int i;
@@ -46,6 +49,7 @@ namespace os {
             unsigned int nofCircles;
             std::mutex inputGuard, counterGuard;
             std::condition_variable spaceAvailable, outputAvailable;
+            os::Semaphore pleaseDontDie;
             bool dying;
 
             /**
@@ -56,9 +60,13 @@ namespace os {
             }
 
         public:
-            MultiCircularBuffer() : nofCircles(0), dying(false) {}
+            MultiCircularBuffer() : nofCircles(0), pleaseDontDie(1), dying(false) {
+                LOG_EVENT(typeid(Self).name(), 0, "Created");
+            }
             ~MultiCircularBuffer() {
+                LOG_EVENT(typeid(Self).name(), 0, "Dying");
                 kill();
+                LOG_EVENT(typeid(Self).name(), 0, "Died");
             }
 
             void registerSubCircle(SubCircle& c) {
@@ -82,8 +90,8 @@ namespace os {
 
             void kill() {
                 dying = true;
-                spaceAvailable.notify_all();
-                outputAvailable.notify_all();
+                notify_all();
+                pleaseDontDie.down();
             }
             /**
              * \brief   Reserves storage for future input to the buffer
@@ -92,6 +100,7 @@ namespace os {
              * to
              */
             T* reserve() {
+                os::SemaphoreGuard s(pleaseDontDie);
                 std::unique_lock<std::mutex> l(counterGuard);
                 while(!dying && oPointer_int == (iPointer+1)) {
                     std::cout << "Buffer full.. " << typeid(T).name() << std::endl;
@@ -128,6 +137,7 @@ namespace os {
              * \brief   Return pointer to the next free unit in the buffer.
              */
             T* next(volatile bool& bailout, const Index& oPointer) {
+                os::SemaphoreGuard s(pleaseDontDie);
                 std::unique_lock<std::mutex> l(counterGuard);
                 //~ std::cout << "Getting next in queue " << typeid(T).name() << std::endl;
                 while(!dying && empty_safe(oPointer) && !bailout) outputAvailable.wait(l);
@@ -194,6 +204,7 @@ namespace os {
              * \brief   Wake up all waiting threads e.g. to check for bailout
              */
             void notify_all() {
+                std::unique_lock<std::mutex> l(counterGuard);
                 outputAvailable.notify_all();
                 spaceAvailable.notify_all();
             }

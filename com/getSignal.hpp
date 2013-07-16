@@ -3,14 +3,20 @@
 #define OS_COM_GETSIGNAL_HPP_
 
 #include <os/com/Signal.hpp>
-
-#define INSTANTIATE_SIGNAL(type)    template bool os::getSignal<type>(os::Signal<type>*&)
+#define SIGNALNAME_MERGE2(a,b) a##b
+#define SIGNALNAME_MERGE(a,b) SIGNALNAME_MERGE2(a,b)
+#define INSTANTIATE_SIGNAL(type)  os::InitializeSignal<type> SIGNALNAME_MERGE(__tmp, __COUNTER__)()
 
 namespace os {
-    template<typename T> bool getSignal(Signal<T>*& s) {
+    template<typename T> struct InitializeSignal {
+        typedef InitializeSignal<T> Self;
+        InitializeSignal() {
+            os::getSignal<T>();
+        }
+    };
+    template<typename T> Signal<T>& getSignal() {
         static Signal<T> signal;
-        s = &signal;
-        return true;
+        return signal;
     }
 }
 #endif

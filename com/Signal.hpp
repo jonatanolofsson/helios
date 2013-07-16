@@ -10,15 +10,8 @@ namespace os {
 
 
     template<typename T>
-    class Signal : public os::MultiCircularBuffer<T, SIGNAL_BUFFER_LENGTH> {};
+    using Signal = os::MultiCircularBuffer<T, SIGNAL_BUFFER_LENGTH>;
 
-    template<typename T> bool getSignal(Signal<T>*& s);
-
-    template<typename T>
-    Signal<T>& getSignal() {
-        static Signal<T>* signal;
-        static bool dummy = getSignal(signal);
-        return (dummy ? *signal : *signal); // only call getSignal once, but remove warning for unused dummy var
-    }
+    template<typename T> Signal<T>& getSignal();
 }
 #endif

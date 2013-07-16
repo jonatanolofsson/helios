@@ -4,4 +4,8 @@ project(os)
 add_subdirectory(com)
 add_subdirectory(utils)
 add_subdirectory(core)
-add_library(os $<TARGET_OBJECTS:os_com> $<TARGET_OBJECTS:os_utils>)
+add_library(os 
+    $<TARGET_OBJECTS:os_com> 
+    $<TARGET_OBJECTS:os_utils>
+    $<TARGET_OBJECTS:os_core>
+)

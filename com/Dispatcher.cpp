@@ -7,33 +7,48 @@ INSTANTIATE_SIGNAL(os::SystemTime);
 
 namespace os {
     volatile bool timeIsRunning = false;
-
-    void stopTime() { timeIsRunning = false; }
-    void startTime() { timeIsRunning = true; }
-
-    void dispatcherActionCounter(const int cmd) {
-        static int runningActions = 0;
-        static std::mutex guard;
+    namespace internal {
+        std::mutex initGuard;
+        std::condition_variable initCondition;
         static Jiffy jiffy;
+        int initializingDispatchers = 0;
+        std::condition_variable allDispatchersInitialized;
+    }
 
-        bool yieldJiffy;
+    void stopTime() { 
+        timeIsRunning = false; 
+    }
+    void startTime() {
+        activeDispatcherCounter(1);
+        timeIsRunning = true;
+        activeDispatcherCounter(-1);
+    }
 
-        {
-            std::unique_lock<std::mutex> l(guard);
-            //std::cout << "Action counter: " << runningActions << " + " << cmd << " = " << runningActions + cmd << std::endl;
-            runningActions += cmd;
-            yieldJiffy = ((cmd < 0) && (runningActions == 0));
-        }
+    void activeDispatcherCounter(const int cmd) {
+        static int dispatchers = 0;
+        static std::mutex guard;
 
-        if (yieldJiffy && timeIsRunning) {
-            yield(++jiffy);
+        std::unique_lock<std::mutex> l(guard);
+        LOG_EVENT("activeDispatcherCounter", 0, "Nof dispatchers: " << dispatchers << " + " << cmd << " = " << dispatchers + cmd);
+        dispatchers += cmd;
+
+        if ((cmd < 0) && (dispatchers == 0) && timeIsRunning) {
+            std::unique_lock<std::mutex> l(internal::initGuard);
+            ++internal::jiffy;
+            internal::initCondition.notify_all();
+            while(internal::initializingDispatchers > 0) internal::allDispatchersInitialized.wait(l);
+            dispatchers += SynchronousDispatcherCounter<false>::count();
+            yield(internal::jiffy);
         }
     }
 
     void expect() {
-        dispatcherActionCounter(1);
+        activeDispatcherCounter(1);
     }
     void gotExpected() {
-        dispatcherActionCounter(-1);
+        activeDispatcherCounter(-1);
+    }
+    JiffyType getCurrentTick() {
+        return internal::jiffy.value;
     }
 }

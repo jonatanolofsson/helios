@@ -192,7 +192,7 @@ namespace os {
             }
 
             void performAction(TARG... args) {
-                ActiveDispatcherCounter<ASYNC> dc;
+                ActiveDispatcherCounter<ASYNC> dc __attribute__((unused));
                 LOG_EVENT(typeid(Self).name(), 0, "Executing actionfunction");
                 (that->*action)(args...);
                 LOG_EVENT(typeid(Self).name(), 0, "Returned from actionfunction.");

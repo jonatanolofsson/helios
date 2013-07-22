@@ -19,6 +19,7 @@
 
 namespace os {
     std::string demangle(const char* name);
+    std::string demangle(const std::string& name);
 
     namespace internal {
         extern std::ostream* eventLogStream;

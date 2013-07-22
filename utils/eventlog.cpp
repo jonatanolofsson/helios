@@ -10,6 +10,9 @@ namespace os {
         char* res = abi::__cxa_demangle (name, buf, &size, &status);
         return std::string(res ? res : name);
     }
+    std::string demangle(const std::string& name) {
+        return name;
+    }
 
     namespace internal {
         std::ostream* eventLogStream = &std::cerr;

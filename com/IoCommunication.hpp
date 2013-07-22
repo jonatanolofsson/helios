@@ -18,6 +18,7 @@ using namespace syrup;
 #include <string>
 #include <iostream>
 #include <thread>
+#include <os/exceptions.hpp>
 #endif
 
 namespace os {
@@ -151,33 +152,33 @@ namespace os {
                     sizeof(MessageHeader::id) + sizeof(MessageHeader::length) + sizeof(MessageHeader::bodyCRC)
                 );
                 if(msginfo.headerCRC != msginfo.header.headerCRC) {
-                    //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": Invalid header crc: " << msginfo.headerCRC << " vs " << msginfo.header.headerCRC << std::endl;
-                    //~ #endif
+                    #ifndef MAPLE_MINI
+                    std::cout << getName() << ": Invalid header crc: " << msginfo.headerCRC << " vs " << msginfo.header.headerCRC << std::endl;
+                    #endif
                     //~ std::cout << msginfo.header.id << " " << msginfo.header.length << std::endl;
                     return false;
                 }
                 if(msginfo.header.id >= M::numberOfMessages) {
-                //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": Invalid id: " << msginfo.header.id << std::endl;
-                //~ #endif
+                    #ifndef MAPLE_MINI
+                    std::cout << getName() << ": Invalid id: " << msginfo.header.id << std::endl;
+                    #endif
                     return false;
                 }
 
                 std::size_t alignment = PostOffice<M>::getAlignment(msginfo.header.id);
                 if(alignment == 0) {
-                //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": Invalid packager: " << msginfo.header.id << std::endl;
-                //~ #endif
+                    #ifndef MAPLE_MINI
+                    std::cout << getName() << ": Invalid packager: " << msginfo.header.id << std::endl;
+                    #endif
                     return false;
                 }
                 msginfo.body = os::addAlignment(readMsg + reader.offset, alignment);
                 reader.offset += os::alignmentToAdd(readMsg + reader.offset, alignment);
 
                 if(sizeof(MessageHeader) + msginfo.header.length + alignment - 1 > MAX_MESSAGE_SIZE) {
-                //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": Message too big: " << msginfo.header.length << std::endl;
-                //~ #endif
+                    #ifndef MAPLE_MINI
+                    std::cout << getName() << ": Message too big: " << msginfo.header.length << std::endl;
+                    #endif
                     // Message to big.
                     /// \todo Warn
                     return false;
@@ -186,16 +187,18 @@ namespace os {
             }
 
             void validateReceivedHeader() {
-                //~ std::cout << "Validating header" << std::endl;
+                //#ifndef MAPLE_MINI
+                //std::cout << "Validating header" << std::endl;
+                //#endif
                 if(validateHeader()) {
-                    //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": " << "Valid header. Receive: " << msginfo.header.length << std::endl;
-                    //~ #endif
+                    //#ifndef MAPLE_MINI
+                    //std::cout << getName() << ": " << "Valid header. Receive: " << msginfo.header.length << std::endl;
+                    //#endif
                     reader.read(msginfo.header.length, &Self::validateReceivedBody);
                 } else {
-                    //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": " << "Invalid header" << std::endl;
-                    //~ #endif
+                    #ifndef MAPLE_MINI
+                    std::cout << getName() << ": " << "Invalid header" << std::endl;
+                    #endif
                     invalidMessage();
                 }
             }
@@ -205,25 +208,25 @@ namespace os {
                     msginfo.body,
                     msginfo.header.length
                 );
-                //~ #ifndef MAPLE_MINI
-                //~ std::cout << getName() << ": " << msginfo.header.length << std::endl;
-                //~ std::cout << getName() << ": " << msginfo.bodyCRC << "  =? " << msginfo.header.bodyCRC << std::endl;
-                //~ #endif
+                //#ifndef MAPLE_MINI
+                //std::cout << getName() << ": " << msginfo.header.length << std::endl;
+                //std::cout << getName() << ": " << msginfo.bodyCRC << "  =? " << msginfo.header.bodyCRC << std::endl;
+                //#endif
                 return (msginfo.bodyCRC == msginfo.header.bodyCRC);
             }
 
             void validateReceivedBody() {
                 if(validateBody()) {
-                    //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": " << "Valid body" << std::endl;
-                    //~ #endif
+                    //#ifndef MAPLE_MINI
+                    //std::cout << getName() << ": " << "Valid body" << std::endl;
+                    //#endif
                     PostOffice<M>::dispatch(msginfo.header.id, msginfo.body, msginfo.header.length);
                     /* Restart */
                     startReceive();
                 } else {
-                    //~ #ifndef MAPLE_MINI
-                    //~ std::cout << getName() << ": " << "Invalid body" << std::endl;
-                    //~ #endif
+                    #ifndef MAPLE_MINI
+                    std::cout << getName() << ": " << "Invalid body" << std::endl;
+                    #endif
                     invalidMessage();
                 }
             }
@@ -256,9 +259,9 @@ namespace os {
                 if(reader.receivedBytes  > 0) {
                     reader.remaining -= reader.receivedBytes;
                     reader.offset += reader.receivedBytes;
-                    //~ #ifndef MAPLE_MINI
-                    //~ std::cout << "Read " << reader.receivedBytes << ". Remaining: " << reader.remaining << std::endl;
-                    //~ #endif
+                    //#ifndef MAPLE_MINI
+                    //std::cout << "Read " << reader.receivedBytes << ". Remaining: " << reader.remaining << std::endl;
+                    //#endif
                     if(0 == reader.remaining) {
                         if(!dying) {
                             ((this)->*(reader.cb))();
@@ -270,22 +273,22 @@ namespace os {
             }
 
             void readerLoop() {
-                //~ int yielded = 0;
-                //~ int noyield = 0;
                 //~ std::cout << getName() << ": " << "Reading from " << socket << std::endl;
+#ifndef MAPLE_MINI
+                try {
+#endif
                 while(!dying) {
                     #ifndef MAPLE_MINI
                     if(0 == readBytes()) {
-                        //~ ++yielded;
                         std::this_thread::yield();
                     }
-                    //~ else {
-                        //~ ++noyield;
-                    //~ }
                     #else
                     readBytes();
                     #endif
                 }
+#ifndef MAPLE_MINI
+                } catch(os::HaltException& e) {}
+#endif
 
                 //~ std::cout << getName() << ": Reader died " << socket << std::endl;
                 //~ std::cout << getName() << ": Yielded vs noyield: " << yielded << "/" << noyield << " = " << ((float)yielded)/(float)(noyield) << std::endl;

@@ -21,7 +21,7 @@ namespace os {
                 private:
                     int i;
                 public:
-                    Index(const int i_ = 0) : i(i_%N) {}
+                    explicit Index(const int i_ = 0) : i(i_%N) {}
                     bool operator==(const Index& that) const {
                         return that.i == i;
                     }
@@ -61,12 +61,12 @@ namespace os {
 
         public:
             MultiCircularBuffer() : nofCircles(0), pleaseDontDie(1), dying(false) {
-                LOG_EVENT(typeid(Self).name(), 0, "Created");
+                //LOG_EVENT(typeid(Self).name(), 0, "Created");
             }
             ~MultiCircularBuffer() {
-                LOG_EVENT(typeid(Self).name(), 0, "Dying");
+                //LOG_EVENT(typeid(Self).name(), 0, "Dying");
                 kill();
-                LOG_EVENT(typeid(Self).name(), 0, "Died");
+                //LOG_EVENT(typeid(Self).name(), 0, "Died");
             }
 
             void registerSubCircle(SubCircle& c) {
@@ -89,8 +89,10 @@ namespace os {
             }
 
             void kill() {
+                if(dying) return;
                 dying = true;
                 notify_all();
+                //LOG_EVENT(typeid(Self).name(), 0, "Going down: " << pleaseDontDie.value());
                 pleaseDontDie.down();
             }
             /**
@@ -136,30 +138,22 @@ namespace os {
             /**
              * \brief   Return pointer to the next free unit in the buffer.
              */
-            T* next(volatile bool& bailout, const Index& oPointer) {
+            T* next(const Index& oPointer, volatile bool*const bailout = nullptr) {
                 os::SemaphoreGuard s(pleaseDontDie);
                 std::unique_lock<std::mutex> l(counterGuard);
                 //~ std::cout << "Getting next in queue " << typeid(T).name() << std::endl;
                 while(!dying && empty_safe(oPointer) && !bailout) outputAvailable.wait(l);
-                if(bailout) throw os::HaltException();
+                if(bailout && *bailout) throw os::HaltException();
                 if(dying) return nullptr;
                 //~ std::cout << "Got next in queue" << std::endl;
                 return &storage[oPointer.index()];
             }
 
             /**
-             * \brief   Return pointer to the next free unit in the buffer.
-             */
-            T* next(const Index& oPointer) {
-                bool tmp = false;
-                return next(tmp, oPointer);
-            }
-
-            /**
              * \brief   Return the first unit in the buffer.
              */
-            T popNextValue(volatile bool& bailout, Index& oPointer) {
-                auto v = next(bailout, oPointer);
+            T popNextValue(Index& oPointer, volatile bool*const bailout) {
+                auto v = next(oPointer, bailout);
                 if(nullptr == v) {
                     throw os::HaltException();
                 }
@@ -233,17 +227,9 @@ namespace os {
             /**
              * \brief   Return pointer to the next free unit in the buffer.
              */
-            T* next() {
+            T* next(volatile bool*const bailout = nullptr) {
                 assert(o);
-                return o->next(oPointer);
-            }
-
-            /**
-             * \brief   Return pointer to the next free unit in the buffer.
-             */
-            T* next(volatile bool& bailout) {
-                assert(o);
-                return o->next(bailout);
+                return o->next(oPointer, bailout);
             }
 
             /**
@@ -257,9 +243,9 @@ namespace os {
             /**
              * \brief   Return the first unit in the buffer.
              */
-            T popNextValue(volatile bool& bailout) {
+            T popNextValue(volatile bool*const bailout) {
                 assert(o);
-                return o->popNextValue(bailout, oPointer);
+                return o->popNextValue(oPointer, bailout);
             }
 
             /**

@@ -2,9 +2,11 @@
 #include <stdio.h>
 
 #include <os/utils/sprintf.hpp>
+#include <os/utils/eventlog.hpp>
 #include <os/utils/pty.hpp>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <iostream>
 
@@ -107,27 +109,22 @@ namespace os {
 
     void pty::close() {
         kill(pid, SIGTERM);
-        FILE* f = NULL;
-        int tries;
-        //~ std::cout << "Closing " << port1 << std::endl;
-        for(tries = 0; tries < MAX_READ_TRIES; ++tries) {
-            f = fopen(port1.c_str(), "r");
-            if(f != NULL) {
-                fclose(f);
-            } else {
-                break;
+        int status = 0;
+        if(waitpid(pid, &status, 0) == pid) {
+            if(0 != status) {
+                LOG_EVENT(std::string("Pty ") + port1 + "/" + port2, 0, "Status: " <<
+                        WIFEXITED(status) << " " <<
+                        WEXITSTATUS(status) << " " <<
+                        WIFSIGNALED(status)<< " " <<
+                        WTERMSIG(status)<< " " <<
+                        WCOREDUMP(status)<< " " <<
+                        WIFSTOPPED(status)<< " " <<
+                        WSTOPSIG(status)<< " " <<
+                        WIFCONTINUED(status));
             }
-            usleep(SLEEP_TIME_US);
-        }
-        //~ std::cout << "Closing " << port2 << std::endl;
-        for(tries = 0; tries < MAX_READ_TRIES; ++tries) {
-            f = fopen(port2.c_str(), "r");
-            if(f != NULL) {
-                fclose(f);
-            } else {
-                break;
-            }
-            usleep(SLEEP_TIME_US);
+        } else {
+            LOG_EVENT(std::string("Pty ") + port1 + "/" + port2, 0, "Waitpid: " << pid);
+            LOG_EVENT(std::string("Pty ") + port1 + "/" + port2, 0, "Status: " << status);
         }
     }
     pty::~pty() {

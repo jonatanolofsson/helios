@@ -10,7 +10,7 @@
 
 #include <unistd.h>
 
-#define LOAD_N                          100000
+#define LOAD_N                          10
 
 using namespace os;
 using namespace testmessages;

@@ -8,6 +8,7 @@
 #include <os/mem/MemoryUnit.hpp>
 #include <os/crc.hpp>
 #include <os/bytemagic.hpp>
+#include <os/exceptions.hpp>
 
 #include <iostream>
 #include <exception>
@@ -60,23 +61,26 @@ namespace os {
             std::thread writerThread;
 
             void transmitLoop() {
-                //~ std::cout << Parent::getName() << ": " << "Transmitting on " << Parent::socket << std::endl;
-                MemUnit* mem;
-                while(!Parent::dying) {
-                    mem = queue.next();
-                    if(mem) {
-                        if(Parent::transmit(*mem)) {
-                            queue.pop();
+                try {
+                    //~ std::cout << Parent::getName() << ": " << "Transmitting on " << Parent::socket << std::endl;
+                    MemUnit* mem;
+                    while(!this->dying) {
+                        mem = queue.next(&(this->dying));
+                        if(mem && !this->dying) {
+                            if(Parent::transmit(*mem)) {
+                                queue.pop();
+                            }
                         }
                     }
                 }
+                catch(os::HaltException& e) {}
             }
 
         public:
             template<typename T>
             void send(const T& contents) {
                 static_assert(os::SameType<typename M::template ById<T::ID>::Type, T>::value, "Invalid message type.");
-                if(Parent::dying) {
+                if(this->dying) {
                     return;
                 }
 
@@ -90,9 +94,9 @@ namespace os {
             }
 
             void close() {
-                if(Parent::dying) return;
+                if(this->dying) return;
                 //~ std::cout << getName() << ": Dying" << std::endl;
-                Parent::dying = true;
+                this->dying = true;
                 queue.kill();
                 writerThread.join();
                 //~ std::cout << getName() << ": Writer died" << std::endl;

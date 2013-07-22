@@ -4,23 +4,27 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <os/utils/eventlog.hpp>
 
 namespace os {
     class Semaphore {
         private:
-            int value;
+            int value_;
             std::mutex mutex;
             std::condition_variable cond;
 
         public:
-            Semaphore(int value = 0) : value(value) {}
+            Semaphore(int value = 0) : value_(value) {}
 
             void up();
             void down();
             void lower();
+            int value();
     };
 
     class SemaphoreGuard {
+        public:
+            typedef SemaphoreGuard Self;
         private:
             SemaphoreGuard();
             Semaphore& sem;

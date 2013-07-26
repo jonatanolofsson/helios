@@ -60,7 +60,12 @@ namespace os {
             }
 
         public:
-            MultiCircularBuffer() : nofCircles(0), pleaseDontDie(1), dying(false) {
+            MultiCircularBuffer() 
+            : iPointer(0)
+            , oPointer_int(0)
+            , nofCircles(0)
+            , pleaseDontDie(1)
+            , dying(false) {
                 //LOG_EVENT(typeid(Self).name(), 0, "Created");
             }
             ~MultiCircularBuffer() {
@@ -76,7 +81,7 @@ namespace os {
                 for(unsigned i = 0; i < N; ++i) {
                     ++circleCounter[i];
                 }
-                c.setBuffer(this);
+                c.setBuffer(this, &iPointer);
             }
             void unregisterSubCircle(SubCircle& c) {
                 //~ std::cout << "Unregister sc" << std::endl;
@@ -105,8 +110,9 @@ namespace os {
                 os::SemaphoreGuard s(pleaseDontDie);
                 std::unique_lock<std::mutex> l(counterGuard);
                 while(!dying && oPointer_int == (iPointer+1)) {
-                    std::cout << "Buffer full.. " << typeid(T).name() << std::endl;
+                    LOG_EVENT(typeid(T).name(), 0, "Buffer full");
                     spaceAvailable.wait(l);
+                    LOG_EVENT(typeid(T).name(), 0, "Bufferspace available again");
                 }
                 if(dying) return nullptr;
                 //~ std::cout << "Reserved space in queue" << std::endl;
@@ -142,7 +148,7 @@ namespace os {
                 os::SemaphoreGuard s(pleaseDontDie);
                 std::unique_lock<std::mutex> l(counterGuard);
                 //~ std::cout << "Getting next in queue " << typeid(T).name() << std::endl;
-                while(!dying && empty_safe(oPointer) && !bailout) outputAvailable.wait(l);
+                while(!dying && empty_safe(oPointer) && !(bailout && *bailout)) outputAvailable.wait(l);
                 if(bailout && *bailout) throw os::HaltException();
                 if(dying) return nullptr;
                 //~ std::cout << "Got next in queue" << std::endl;
@@ -175,14 +181,17 @@ namespace os {
             void pop(Index& oPointer) {
                 std::unique_lock<std::mutex> l(counterGuard);
                 if(!empty_safe(oPointer)) {
-                    //~ std::cout << "Popping from queue, " << circleCounter[oPointer.index()] << " subcircles." << std::endl;
+                    LOG_EVENT(typeid(Self).name(), 0, "Popping from queue, " << circleCounter[oPointer.index()] << " subcircles.");
                     --circleCounter[oPointer.index()];
                     if(0 == circleCounter[oPointer.index()]) {
+                        LOG_EVENT(typeid(Self).name(), 0, "Last popper");
                         //~ std::cout << "Popped from queue" << std::endl;
                         ++oPointer_int;
                         spaceAvailable.notify_all();
                     }
                     ++oPointer;
+                } else {
+                    LOG_EVENT(typeid(Self).name(), 0, "Tried to pop from empty queue");
                 }
             }
 
@@ -215,8 +224,9 @@ namespace os {
             Buffer* o;
             Index oPointer;
 
-            void setBuffer(Buffer* const b) {
+            void setBuffer(Buffer* const b, const Index*const v = nullptr) {
                 o = b;
+                if(v) oPointer = *v;
             }
 
             friend Buffer;

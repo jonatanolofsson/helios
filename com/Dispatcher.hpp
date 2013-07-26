@@ -63,8 +63,8 @@ namespace os {
     template<typename T>
     void yield(const T& val) {
         if(typedCounter<T>(0) > 0) {
-            getSignal<T>().push(val);
             LOG_EVENT(typeid(T).name(), 0, "Yielded value");
+            getSignal<T>().push(val);
         }
         else
         {
@@ -85,8 +85,8 @@ namespace os {
             : signal(getSignal<T>())
             , dying(false)
             {
+                LOG_EVENT(typeid(Self).name(), 0, "Creating");
                 signal.registerSubCircle(subCircle);
-                LOG_EVENT(typeid(Self).name(), 0, "Created");
             }
             ~Via() {
                 halt();
@@ -100,7 +100,7 @@ namespace os {
                 signal.notify_all();
             }
             const T value() {
-                return subCircle.popNextValue(dying);
+                return subCircle.popNextValue(&dying);
             }
     };
 

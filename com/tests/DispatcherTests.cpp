@@ -31,6 +31,7 @@ TEST(DispatcherTest, ExecuteWhenAllAvailable) {
     triggeredB = 0;
     // 1. Set up an action function
     SampleActionClass0 o;
+    os::startTime();
     int inv = o.e.getInvokations();
     int invB= o.e2.getInvokations();
     os::yield(1);
@@ -51,13 +52,14 @@ struct SampleActionClass1 {
     SampleActionClass1() : e(&SampleActionClass1::sampleActionFn, this) {}
 };
 
-TEST(DispatcherTest, ExecuteWithNoArgs) {
-    result = 0;
-    triggered = 0;
-    // 1. Set up an action function
-    SampleActionClass1 o;
-    int inv = o.e.getInvokations();
-    EXPECT_EQ(triggered, false);
-    o.e.wait(inv+10);
-    EXPECT_GT(triggered, 10);
-}
+//TEST(DispatcherTest, ExecuteWithNoArgs) {
+    //result = 0;
+    //triggered = 0;
+    //// 1. Set up an action function
+    //SampleActionClass1 o;
+    //os::startTime();
+    //int inv = o.e.getInvokations();
+    //EXPECT_EQ(triggered, false);
+    //o.e.wait(inv+10);
+    //EXPECT_GT(triggered, 10);
+//}

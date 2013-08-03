@@ -1,2 +1,2 @@
 make_test(PtyTests)
-target_link_libraries(PtyTests utils)
+target_link_libraries(PtyTests utils os)

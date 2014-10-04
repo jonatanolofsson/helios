@@ -1,0 +1,6 @@
+include_rules
+ifdef INCLUDE_TESTS
+    ifeq (@(INCLUDE_TESTS),y)
+        : foreach *.cpp | ../../libos.a |> !testcc |>
+    endif
+endif

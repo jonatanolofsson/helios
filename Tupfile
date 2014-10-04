@@ -1,0 +1,4 @@
+include_rules
+
+: foreach com/*.cpp core/*.cpp utils/*.cpp |> !cc |> %B.o
+: *.o |> !ar |>

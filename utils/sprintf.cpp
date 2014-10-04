@@ -4,7 +4,7 @@
 
 namespace os {
     // http://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
-    std::string sprintf(const std::string &fmt, ...) {
+    std::string sprintf(const std::string fmt, ...) {
         int size=100;
         std::string str;
         va_list ap;

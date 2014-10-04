@@ -4,7 +4,7 @@
 #include <string>
 
 namespace os {
-    std::string sprintf(const std::string &fmt, ...);
+    std::string sprintf(const std::string fmt, ...);
 }
 
 #endif

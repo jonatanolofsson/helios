@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SERIAL_MESSAGE_HPP_
-#define SERIAL_MESSAGE_HPP_
+#ifndef OS_COM_SERIAL_MESSAGE_HPP_
+#define OS_COM_SERIAL_MESSAGE_HPP_
 
 #include <os/types.hpp>
 

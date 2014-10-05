@@ -6,6 +6,7 @@
 #include <os/bytemagic.hpp>
 #include <os/type_traits.hpp>
 #include <os/com/PostOffice.hpp>
+#include <os/com/SerialMessage.hpp>
 #include <os/mem/MemoryUnit.hpp>
 #include <errno.h>
 
@@ -104,7 +105,7 @@ namespace os {
                 //~ #ifndef MAPLE_MINI
                 //~ std::cout << getName() << ": " << "Got separator" << std::endl;
                 //~ #endif
-                if((readMsg[0] == SERIAL_MESSAGE_SEPARATOR)) {
+                if(readMsg[0] == SERIAL_MESSAGE_SEPARATOR) {
                     //~ #ifndef MAPLE_MINI
                     //~ std::cout << getName() << ": " << "Valid separator" << std::endl;
                     //~ #endif
@@ -149,7 +150,7 @@ namespace os {
 
                 msginfo.headerCRC = crc16(
                     readMsg,
-                    sizeof(MessageHeader::id) + sizeof(MessageHeader::length) + sizeof(MessageHeader::bodyCRC)
+                    sizeof(msginfo.header.id) + sizeof(msginfo.header.length) + sizeof(msginfo.header.bodyCRC)
                 );
                 if(msginfo.headerCRC != msginfo.header.headerCRC) {
                     #ifndef MAPLE_MINI

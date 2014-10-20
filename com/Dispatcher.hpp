@@ -16,7 +16,8 @@
 
 namespace os {
     namespace internal {
-        template<typename T> int typedCounter(const int);
+        template<typename T, bool ASYNC = false> int typedCounter(const int);
+        void activeDispatcherCounter(const int);
     }
 
     using namespace internal;
@@ -28,9 +29,12 @@ namespace os {
 
     template<typename T>
     void yield(const T& val) {
-        if(typedCounter<T>(0) > 0) {
+        int asyncDispatchers = typedCounter<T, true>(0);
+        if(typedCounter<T>(0) + asyncDispatchers > 0) {
             LOG_EVENT(typeid(T).name(), 0, "Yielded value");
             getSignal<T>().push(val);
+            LOG_EVENT(typeid(T).name(), 0, "Expecting " << asyncDispatchers << " async dispatchers to fire");
+            activeDispatcherCounter(asyncDispatchers);
         }
         else
         {
@@ -44,7 +48,7 @@ namespace os {
         extern int initializingDispatchers;
         extern std::condition_variable allDispatchersInitialized;
 
-        template<typename T>
+        template<typename T, bool ASYNC>
         int typedCounter(const int c) {
             static int count = 0;
             static std::mutex guard;
@@ -64,15 +68,6 @@ namespace os {
         template<> struct SynchronousDispatcherCounter<true> {
             static void up() {}
             static void down() {}
-        };
-
-        void activeDispatcherCounter(const int);
-        template<bool ASYNC> struct ActiveDispatcherCounter {
-            ~ActiveDispatcherCounter() { activeDispatcherCounter(-1); }
-        };
-        template<> struct ActiveDispatcherCounter<true> {
-            ActiveDispatcherCounter() { activeDispatcherCounter(1); }
-            ~ActiveDispatcherCounter() { activeDispatcherCounter(-1); }
         };
 
         template<typename T>
@@ -120,6 +115,9 @@ namespace os {
                     , invokations(0)
                     , dying(false)
                 {
+                    if(ASYNC) {
+                        os::evalVariadic(typedCounter<TARG, true>(1)...);
+                    }
                     std::unique_lock<std::mutex> l(internal::initGuard);
                     ++internal::initializingDispatchers;
                     firstTick = getCurrentTick();
@@ -130,6 +128,9 @@ namespace os {
                 ~GeneralDispatcher() {
                     join();
                     SynchronousDispatcherCounter<ASYNC>::down();
+                    if(ASYNC) {
+                        os::evalVariadic(typedCounter<TARG, true>(-1)...);
+                    }
                     LOG_EVENT(typeid(Self).name(), 0, "Died");
                 }
                 void wait(const int last_invokation) {
@@ -195,10 +196,10 @@ namespace os {
                 }
 
                 void performAction(TARG... args) {
-                    ActiveDispatcherCounter<ASYNC> dc __attribute__((unused));
                     LOG_EVENT(typeid(Self).name(), 0, "Executing actionfunction");
                     (that->*action)(args...);
                     LOG_EVENT(typeid(Self).name(), 0, "Returned from actionfunction.");
+                    activeDispatcherCounter(-1);
                 }
         };
     }

@@ -28,7 +28,7 @@ namespace os {
                 internal::initCondition.notify_all();
                 while(internal::initializingDispatchers > 0) internal::allDispatchersInitialized.wait(l);
                 dispatchers += SynchronousDispatcherCounter<false>::count();
-                yield(internal::jiffy);
+                getSignal<Jiffy>().push(internal::jiffy);
             }
         }
     }

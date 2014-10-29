@@ -178,7 +178,7 @@ namespace os {
 
                 if(sizeof(MessageHeader) + msginfo.header.length + alignment - 1 > MAX_MESSAGE_SIZE) {
                     #ifndef MAPLE_MINI
-                    std::cout << getName() << ": Message too big: " << msginfo.header.length << std::endl;
+                    std::cout << getName() << ": Message too big: " << msginfo.header.length << " (+ " << msginfo.header.length << " + " << alignment << " -1 > " << MAX_MESSAGE_SIZE << ")" << std::endl;
                     #endif
                     // Message to big.
                     /// \todo Warn

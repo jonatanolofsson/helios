@@ -318,24 +318,20 @@ namespace os {
             }
             #endif
 
-
-            MemUnit mem[2];
-
             template<typename T>
             void send(const T& contents) {
+                MemUnit mem;
                 if(dying) {
                     return;
                 }
 
-                static bool n = 0;
                 MessageHeader header = { T::ID, sizeof(contents), 0, 0 };
                 signPackage(header, contents);
 
-                mem[n].cpy(SERIAL_MESSAGE_SEPARATOR);
-                mem[n].template cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
-                mem[n].template cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents);
-                transmit(mem[n]);
-                n = !n;
+                mem.cpy(SERIAL_MESSAGE_SEPARATOR);
+                mem.template cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
+                mem.template cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents);
+                transmit(mem);
             }
 #ifndef MAPLE_MINI
             std::string getName() const {

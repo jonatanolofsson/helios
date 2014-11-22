@@ -19,7 +19,7 @@ namespace os {
             static std::mutex guard;
 
             std::unique_lock<std::mutex> l(guard);
-            LOG_EVENT("activeDispatcherCounter", 0, "Nof dispatchers: " << dispatchers << " + " << cmd << " = " << dispatchers + cmd);
+            //LOG_EVENT("activeDispatcherCounter", 0, "Nof dispatchers: " << dispatchers << " + " << cmd << " = " << dispatchers + cmd);
             dispatchers += cmd;
 
             if ((cmd < 0) && (dispatchers == 0) && timeIsRunning) {

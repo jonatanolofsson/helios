@@ -60,7 +60,7 @@ namespace os {
             }
 
         public:
-            MultiCircularBuffer() 
+            MultiCircularBuffer()
             : iPointer(0)
             , oPointer_int(0)
             , nofCircles(0)
@@ -124,11 +124,13 @@ namespace os {
              * \brief   Set the next input as ready
              */
             void push() {
-                std::unique_lock<std::mutex> l(counterGuard);
-                //~ std::cout << "Push to queue " << typeid(T).name() << std::endl;
-                circleCounter[iPointer.index()] = nofCircles;
-                ++iPointer;
-                inputGuard.unlock();
+                {
+                    std::unique_lock<std::mutex> l(counterGuard);
+                    //~ std::cout << "Push to queue " << typeid(T).name() << std::endl;
+                    circleCounter[iPointer.index()] = nofCircles;
+                    ++iPointer;
+                    inputGuard.unlock();
+                }
                 outputAvailable.notify_all();
                 //~ std::cout << "Pushed to queue " << typeid(T).name() << std::endl;
             }
@@ -149,7 +151,10 @@ namespace os {
                 std::unique_lock<std::mutex> l(counterGuard);
                 //~ std::cout << "Getting next in queue " << typeid(T).name() << std::endl;
                 while(!dying && empty_safe(oPointer) && !(bailout && *bailout)) outputAvailable.wait(l);
-                if(bailout && *bailout) throw os::HaltException();
+                if(bailout && *bailout) {
+                    LOG_EVENT(typeid(Self).name(), 0, "Bailing out");
+                    throw os::HaltException();
+                }
                 if(dying) return nullptr;
                 //~ std::cout << "Got next in queue" << std::endl;
                 return &storage[oPointer.index()];
@@ -161,6 +166,7 @@ namespace os {
             T popNextValue(Index& oPointer, volatile bool*const bailout) {
                 auto v = next(oPointer, bailout);
                 if(nullptr == v) {
+                    LOG_EVENT(typeid(Self).name(), 0, "Popped nullptr");
                     throw os::HaltException();
                 }
                 pop(oPointer);
@@ -181,10 +187,10 @@ namespace os {
             void pop(Index& oPointer) {
                 std::unique_lock<std::mutex> l(counterGuard);
                 if(!empty_safe(oPointer)) {
-                    LOG_EVENT(typeid(Self).name(), 0, "Popping from queue, " << circleCounter[oPointer.index()] << " subcircles.");
+                    //LOG_EVENT(typeid(Self).name(), 0, "Popping from queue, " << circleCounter[oPointer.index()] << " subcircles.");
                     --circleCounter[oPointer.index()];
                     if(0 == circleCounter[oPointer.index()]) {
-                        LOG_EVENT(typeid(Self).name(), 0, "Last popper");
+                        //LOG_EVENT(typeid(Self).name(), 0, "Last popper");
                         //~ std::cout << "Popped from queue" << std::endl;
                         ++oPointer_int;
                         spaceAvailable.notify_all();
@@ -207,7 +213,6 @@ namespace os {
              * \brief   Wake up all waiting threads e.g. to check for bailout
              */
             void notify_all() {
-                std::unique_lock<std::mutex> l(counterGuard);
                 outputAvailable.notify_all();
                 spaceAvailable.notify_all();
             }

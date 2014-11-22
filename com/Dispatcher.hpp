@@ -31,9 +31,9 @@ namespace os {
     void yield(const T& val) {
         int asyncDispatchers = typedCounter<T, true>(0);
         if(typedCounter<T>(0) + asyncDispatchers > 0) {
-            LOG_EVENT(typeid(T).name(), 0, "Yielded value");
+            //LOG_EVENT(typeid(T).name(), 0, "Yielded value");
             getSignal<T>().push(val);
-            LOG_EVENT(typeid(T).name(), 0, "Expecting " << asyncDispatchers << " async dispatchers to fire");
+            //LOG_EVENT(typeid(T).name(), 0, "Expecting " << asyncDispatchers << " async dispatchers to fire");
             activeDispatcherCounter(asyncDispatchers);
         }
         else
@@ -126,6 +126,7 @@ namespace os {
                     t = std::thread(&Self::run, this);
                 }
                 ~GeneralDispatcher() {
+                    LOG_EVENT(typeid(Self).name(), 0, "Dying");
                     join();
                     SynchronousDispatcherCounter<ASYNC>::down();
                     if(ASYNC) {
@@ -142,6 +143,7 @@ namespace os {
                     return invokations;
                 }
                 void join() {
+                    LOG_EVENT(typeid(Self).name(), 0, "Joining");
                     dying = true;
                     cond.notify_all();
                     HaltVia<TARG...>::halt(this);
@@ -189,16 +191,19 @@ namespace os {
                             cond.notify_all();
                         }
                     }
-                    catch (const os::HaltException& e) {}
+                    catch (const os::HaltException& e) {
+                        LOG_EVENT(typeid(Self).name(), 0, "Got haltexception");
+                    }
                     catch (std::exception& e) {
                         std::cerr << e.what();
                     }
+                    LOG_EVENT(typeid(Self).name(), 0, "Exited thread");
                 }
 
                 void performAction(TARG... args) {
-                    LOG_EVENT(typeid(Self).name(), 0, "Executing actionfunction");
+                    //LOG_EVENT(typeid(Self).name(), 0, "Executing actionfunction");
                     (that->*action)(args...);
-                    LOG_EVENT(typeid(Self).name(), 0, "Returned from actionfunction.");
+                    //LOG_EVENT(typeid(Self).name(), 0, "Returned from actionfunction.");
                     activeDispatcherCounter(-1);
                 }
         };

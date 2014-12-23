@@ -1,6 +1,4 @@
 #pragma once
-#ifndef OS_COM_GETSIGNAL_HPP_
-#define OS_COM_GETSIGNAL_HPP_
 
 #include <os/com/Signal.hpp>
 #define SIGNALNAME_MERGE2(a,b) a##b
@@ -19,4 +17,3 @@ namespace os {
         return signal;
     }
 }
-#endif

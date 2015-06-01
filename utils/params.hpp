@@ -1,8 +1,8 @@
 #pragma once
-#include <boost/property_tree/ptree.hpp>
+#include <rapidjson/document.h>
 
 namespace os {
-    typedef boost::property_tree::ptree Parameters;
+    typedef rapidjson::Document Parameters;
     extern Parameters parameters;
     void initParameters();
 }

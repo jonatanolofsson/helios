@@ -1,6 +1,4 @@
 #pragma once
-#ifndef OS_BYTEMAGIC_HPP_
-#define OS_BYTEMAGIC_HPP_
 
 #include <string.h>
 
@@ -24,5 +22,3 @@ namespace os {
         return (T*)((U8*)start + alignmentToAdd(start, alignment));
     }
 }
-
-#endif

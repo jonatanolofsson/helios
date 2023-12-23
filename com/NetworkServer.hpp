@@ -26,6 +26,7 @@ namespace os {
             void setupAddress() {
                 serverAddress.sin_addr.s_addr = INADDR_ANY;
             }
+
             void listenOnConnection() {
                 int status = bind(tcpSocket, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
                 if(status < 0) {

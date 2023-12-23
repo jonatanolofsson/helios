@@ -72,7 +72,7 @@ namespace os {
             void signPackage(MessageHeader& header, const TT& contents) {
                 header.bodyCRC = crc16(
                     (U8*)&contents,
-                    sizeof(contents)
+                    header.length
                 );
                 header.headerCRC = crc16(
                     (U8*)&header,
@@ -319,18 +319,18 @@ namespace os {
             #endif
 
             template<typename T>
-            void send(const T& contents) {
+            void send(const T& contents, const std::size_t len = sizeof(T)) {
                 MemUnit mem;
                 if(dying) {
                     return;
                 }
 
-                MessageHeader header = { T::ID, sizeof(contents), 0, 0 };
+                MessageHeader header = { T::ID, len, 0, 0 };
                 signPackage(header, contents);
 
-                mem.cpy(SERIAL_MESSAGE_SEPARATOR);
-                mem.template cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
-                mem.template cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents);
+                mem.cpy(0, SERIAL_MESSAGE_SEPARATOR);
+                mem.cpy(SERIAL_MESSAGE_SEPARATOR_LENGTH, header);
+                mem.cpy(sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH, contents, len);
                 transmit(mem);
             }
 #ifndef MAPLE_MINI

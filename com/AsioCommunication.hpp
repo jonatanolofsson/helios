@@ -1,6 +1,9 @@
 #pragma once
-#ifndef OS_COM_ASIOCOMMUNICATION_HPP_
-#define OS_COM_ASIOCOMMUNICATION_HPP_
+#include <mutex>
+#include <condition_variable>
+#include <iostream>
+#include <exception>
+#include <thread>
 
 #include <os/com/IoCommunication.hpp>
 #include <stdint.h>
@@ -9,10 +12,6 @@
 #include <os/crc.hpp>
 #include <os/bytemagic.hpp>
 #include <os/exceptions.hpp>
-
-#include <iostream>
-#include <exception>
-#include <thread>
 
 #include <termios.h>
 #include <unistd.h>
@@ -23,16 +22,11 @@ namespace os {
         private:
             typedef AsioCommunication<M, MAX_MESSAGE_SIZE, MAX_QUEUE_LENGTH> Self;
             typedef IoCommunication<M, MAX_MESSAGE_SIZE> Parent;
+            std::mutex queueGuard;
+            std::condition_variable empty_queue;
 
         protected:
             using Parent::getName;
-
-            struct Message {
-                U8*             body;
-                U16             headerCRC;
-                U16             bodyCRC;
-                MessageHeader   header;
-            };
 
             AsioCommunication(const std::string name_)
             : IoCommunication<M, MAX_MESSAGE_SIZE>(name_)
@@ -65,10 +59,11 @@ namespace os {
                     //~ std::cout << Parent::getName() << ": " << "Transmitting on " << Parent::socket << std::endl;
                     MemUnit* mem;
                     while(!this->dying) {
-                        mem = queue.next(&(this->dying));
+                        mem = queue.next();
                         if(mem && !this->dying) {
                             if(Parent::transmit(*mem)) {
                                 queue.pop();
+                                empty_queue.notify_all();
                             }
                         }
                     }
@@ -87,9 +82,9 @@ namespace os {
                 MemUnit* mem = queue.reserve();
                 MessageHeader header = { T::ID, sizeof(contents), 0, 0 };
                 Parent::signPackage(header, contents);
-                mem->cpy(SERIAL_MESSAGE_SEPARATOR);
-                mem->template cpy<SERIAL_MESSAGE_SEPARATOR_LENGTH>(header);
-                mem->template cpy<sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH>(contents);
+                mem->cpy(0, SERIAL_MESSAGE_SEPARATOR);
+                mem->template cpy(SERIAL_MESSAGE_SEPARATOR_LENGTH, header);
+                mem->template cpy(sizeof(header)+SERIAL_MESSAGE_SEPARATOR_LENGTH, contents);
                 queue.push();
             }
 
@@ -104,7 +99,12 @@ namespace os {
                 readerThread.join();
                 //~ std::cout << getName() << ": Reader died" << std::endl;
             }
+
+            void wait() {
+                if (!queue.empty()) {
+                    std::unique_lock<std::mutex> l(queueGuard);
+                    while(!this->dying && !queue.empty()) { empty_queue.wait(l); }
+                }
+            }
     };
 }
-
-#endif

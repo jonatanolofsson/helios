@@ -1,7 +1,4 @@
 #pragma once
-#ifndef OS_TYPE_TRAITS_HPP_
-#define OS_TYPE_TRAITS_HPP_
-
 #include <type_traits>
 
 namespace os {
@@ -14,5 +11,3 @@ namespace os {
     template<typename T, typename... Other> struct ReturnValue  { typedef typename std::result_of<T> type; };
     template<typename... Args> inline void evalVariadic(Args&&...) {}
 }
-
-#endif

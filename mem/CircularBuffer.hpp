@@ -20,6 +20,7 @@ namespace os {
             {
                 buffer.registerSubCircle(*dynamic_cast<SubCircle*>(this));
             }
+
             ~CircularBuffer()
             {
                 buffer.unregisterSubCircle(*dynamic_cast<SubCircle*>(this));
@@ -51,7 +52,7 @@ namespace os {
             }
 
             /**
-             * \brief   Set the next input as ready
+             * \brief   Prepare to die
              */
             void kill() {
                 buffer.kill();

@@ -28,6 +28,7 @@ namespace os {
             std::size_t getAlignment(const U16 id) const {
                 return packagers[id].alignment;
             }
+
             void dispatch(const U16 id, const U8* msg, const std::size_t len) const {
                 //~ assert(packagers[id].alignment > 0);
                 //~ BOOST_ASSERT((((std::size_t)msg % packagers[id].alignment) == 0));

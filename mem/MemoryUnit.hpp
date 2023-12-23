@@ -19,14 +19,16 @@ namespace os {
             const U8* data() const {
                 return data_nc();
             }
+
             std::size_t length() const {
                 return length_;
             }
-            template<unsigned OFFSET = 0, typename T>
-            void cpy(const T& d, const std::size_t len = sizeof(T)) {
-                if((OFFSET + len) <= SIZE) {
-                    memcpy(data_nc() + OFFSET, &d, len);
-                    length_ = (length_ > (OFFSET + len) ? length_ : (OFFSET + len));
+
+            template<typename T>
+            void cpy(const unsigned offset, const T& d, const std::size_t len = sizeof(T)) {
+                if((offset + len) <= SIZE) {
+                    memcpy(data_nc() + offset, &d, len);
+                    length_ = (length_ > (offset + len) ? length_ : (offset + len));
                 } else {
                     //~ std::cerr << "Tried to overfill membuffer" << std::endl;
                 }

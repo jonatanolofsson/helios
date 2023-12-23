@@ -22,19 +22,24 @@ namespace os {
                     int i;
                 public:
                     explicit Index(const int i_ = 0) : i(i_%N) {}
+
                     bool operator==(const Index& that) const {
                         return that.i == i;
                     }
+
                     bool operator==(const int& that) const {
                         return that == i;
                     }
+
                     int operator+(const int a) const {
                         return (i+a)%N;
                     }
+
                     int operator++() {
                         i = (i+1)%N;
                         return i;
                     }
+
                     int index() const {
                         return i;
                     }
@@ -83,6 +88,7 @@ namespace os {
                 }
                 c.setBuffer(this, &iPointer);
             }
+
             void unregisterSubCircle(SubCircle& c) {
                 //~ std::cout << "Unregister sc" << std::endl;
                 std::unique_lock<std::mutex> l(counterGuard);
@@ -100,6 +106,7 @@ namespace os {
                 //LOG_EVENT(typeid(Self).name(), 0, "Going down: " << pleaseDontDie.value());
                 pleaseDontDie.down();
             }
+
             /**
              * \brief   Reserves storage for future input to the buffer
              *
@@ -146,15 +153,11 @@ namespace os {
             /**
              * \brief   Return pointer to the next free unit in the buffer.
              */
-            T* next(const Index& oPointer, volatile bool*const bailout = nullptr) {
+            T* next(const Index& oPointer) {
                 os::SemaphoreGuard s(pleaseDontDie);
                 std::unique_lock<std::mutex> l(counterGuard);
                 //~ std::cout << "Getting next in queue " << typeid(T).name() << std::endl;
-                while(!dying && empty_safe(oPointer) && !(bailout && *bailout)) outputAvailable.wait(l);
-                if(bailout && *bailout) {
-                    LOG_EVENT(typeid(Self).name(), 0, "Bailing out");
-                    throw os::HaltException();
-                }
+                while(!dying && empty_safe(oPointer)) { outputAvailable.wait(l); }
                 if(dying) return nullptr;
                 //~ std::cout << "Got next in queue" << std::endl;
                 return &storage[oPointer.index()];
@@ -163,8 +166,8 @@ namespace os {
             /**
              * \brief   Return the first unit in the buffer.
              */
-            T popNextValue(Index& oPointer, volatile bool*const bailout) {
-                auto v = next(oPointer, bailout);
+            T popNextValue(Index& oPointer) {
+                auto v = next(oPointer);
                 if(nullptr == v) {
                     LOG_EVENT(typeid(Self).name(), 0, "Popped nullptr");
                     throw os::HaltException();
@@ -210,7 +213,7 @@ namespace os {
             }
 
             /**
-             * \brief   Wake up all waiting threads e.g. to check for bailout
+             * \brief   Wake up all waiting threads e.g. to check if dying
              */
             void notify_all() {
                 outputAvailable.notify_all();
@@ -242,9 +245,9 @@ namespace os {
             /**
              * \brief   Return pointer to the next free unit in the buffer.
              */
-            T* next(volatile bool*const bailout = nullptr) {
+            T* next() {
                 assert(o);
-                return o->next(oPointer, bailout);
+                return o->next(oPointer);
             }
 
             /**
@@ -258,9 +261,9 @@ namespace os {
             /**
              * \brief   Return the first unit in the buffer.
              */
-            T popNextValue(volatile bool*const bailout) {
+            T popNextValue() {
                 assert(o);
-                return o->popNextValue(oPointer, bailout);
+                return o->popNextValue(oPointer);
             }
 
             /**

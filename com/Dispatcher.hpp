@@ -78,6 +78,7 @@ namespace os {
                 Signal<T>& signal;
                 typename Signal<T>::SubCircle subCircle;
                 bool dying;
+
             protected:
                 Via()
                 : signal(getSignal<T>())
@@ -87,19 +88,22 @@ namespace os {
                     signal.registerSubCircle(subCircle);
                     typedCounter<T>(1);
                 }
+
                 ~Via() {
-                    halt();
+                    kill();
                     typedCounter<T>(-1);
                     signal.unregisterSubCircle(subCircle);
                     LOG_EVENT(typeid(Self).name(), 0, "Destroyed");
                 }
-                void halt() {
+
+                void kill() {
                     if(dying) return;
                     dying = true;
                     signal.notify_all();
                 }
+
                 const T value() {
-                    return subCircle.popNextValue(&dying);
+                    return subCircle.popNextValue();
                 }
         };
 
@@ -146,7 +150,7 @@ namespace os {
                     LOG_EVENT(typeid(Self).name(), 0, "Joining");
                     dying = true;
                     cond.notify_all();
-                    HaltVia<TARG...>::halt(this);
+                    KillVia<TARG...>::kill(this);
                     t.join();
                 }
                 void join_next() {
@@ -155,12 +159,12 @@ namespace os {
 
             private:
                 template<typename... TYPES>
-                struct HaltVia {static void halt(Self*){}};
+                struct KillVia {static void kill(Self*){}};
                 template<typename T0, typename... TYPES>
-                struct HaltVia<T0, TYPES...> {
-                    static void halt(Self* obj) {
-                        obj->Via<T0>::halt();
-                        HaltVia<TYPES...>::halt(obj);
+                struct KillVia<T0, TYPES...> {
+                    static void kill(Self* obj) {
+                        obj->Via<T0>::kill();
+                        KillVia<TYPES...>::kill(obj);
                     }
                 };
 

@@ -3,9 +3,9 @@
 #include <string>
 #include <stdio.h>
 #include <rapidjson/document.h>
-#include <rapidjson/filestream.h>
+#include <rapidjson/istreamwrapper.h>
 #include <assert.h>
-#include <iostream>
+#include <fstream>
 
 namespace os {
     Parameters parameters;
@@ -17,10 +17,9 @@ namespace os {
 
         Arguments args = getArguments(desc);
         std::string filename = args["params"].as<std::string>();
-        FILE* pFile = fopen(filename.c_str(), "rb");
-        rapidjson::FileStream is(pFile);
-        parameters.ParseStream<0>(is);
+        std::ifstream ifs(filename);
+        rapidjson::IStreamWrapper isw(ifs);
+        parameters.ParseStream<0>(isw);
         assert(!parameters.HasParseError());
-        fclose(pFile);
     }
 }
